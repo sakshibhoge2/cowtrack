@@ -1,0 +1,1669 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CowTrack - Smart Livestock Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            box-sizing: border-box;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in-left {
+            animation: slideInLeft 0.5s ease-out;
+        }
+        
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .pulse-glow {
+            animation: pulseGlow 2s infinite;
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.6); }
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .status-healthy { background-color: #dcfce7; color: #166534; }
+        .status-pregnant { background-color: #fef3c7; color: #92400e; }
+        .status-alert { background-color: #fee2e2; color: #991b1b; }
+        .status-due { background-color: #dbeafe; color: #1e40af; }
+        
+        .metric-card {
+            background: linear-gradient(135deg, var(--start-color), var(--end-color));
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 500;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success { background-color: #10b981; }
+        .notification.error { background-color: #ef4444; }
+        .notification.warning { background-color: #f59e0b; }
+        .notification.info { background-color: #3b82f6; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            transition: width 0.3s ease;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: -300px;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            transition: left 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .sidebar.open {
+            left: 0;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <nav class="gradient-bg shadow-xl border-b-4 border-green-400 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex items-center space-x-4">
+                    <button id="menu-toggle" class="lg:hidden text-white hover:text-green-200 transition-colors">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-white p-2 rounded-xl shadow-lg">
+                            <i class="fas fa-cow text-green-600 text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-white" id="nav-title">CowTrack</h1>
+                            <p class="text-green-100 text-sm" id="nav-subtitle">Smart Livestock Management</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-6">
+                    <div class="hidden md:flex items-center space-x-4">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2">
+                            <span class="text-white text-sm font-medium" id="current-time"></span>
+                        </div>
+                        <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2">
+                            <span class="text-white text-sm font-medium" id="total-registered">0 Registered</span>
+                        </div>
+                    </div>
+                    
+                    <select id="language-selector" class="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-4 py-2 text-white text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent">
+                        <option value="en" class="text-gray-800">🇬🇧 English</option>
+                        <option value="mr" class="text-gray-800">🇮🇳 मराठी</option>
+                        <option value="hi" class="text-gray-800">🇮🇳 हिंदी</option>
+                        <option value="kn" class="text-gray-800">🇮🇳 ಕನ್ನಡ</option>
+                        <option value="gu" class="text-gray-800">🇮🇳 ગુજરાતી</option>
+                    </select>
+                    
+                    <button id="notifications-btn" class="relative bg-white/20 backdrop-blur-sm p-2 rounded-lg hover:bg-white/30 transition-colors">
+                        <i class="fas fa-bell text-white"></i>
+                        <span id="notification-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="sidebar-overlay" class="overlay"></div>
+    <div id="mobile-sidebar" class="sidebar">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-xl font-bold text-gray-800">Menu</h2>
+                <button id="close-sidebar" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <nav class="space-y-4">
+                <a href="#" id="mobile-home" class="flex items-center space-x-3 text-gray-700 hover:text-green-600 transition-colors">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" id="mobile-register" class="flex items-center space-x-3 text-gray-700 hover:text-green-600 transition-colors">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Register Cow</span>
+                </a>
+                <a href="#" id="mobile-search" class="flex items-center space-x-3 text-gray-700 hover:text-green-600 transition-colors">
+                    <i class="fas fa-search"></i>
+                    <span>Search Profile</span>
+                </a>
+                <a href="#" id="mobile-analytics" class="flex items-center space-x-3 text-gray-700 hover:text-green-600 transition-colors">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div id="home-page" class="fade-in">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-green-500 to-blue-600 rounded-full mb-6 pulse-glow">
+                    <i class="fas fa-cow text-white text-4xl"></i>
+                </div>
+                <h2 class="text-5xl font-bold text-gray-800 mb-4" id="home-title">CowTrack</h2>
+                <p class="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed" id="home-subtitle">
+                    Professional livestock management system with digital health profiles, QR code tracking, vaccination schedules, pregnancy monitoring, and comprehensive analytics for modern dairy farms.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+                <div class="metric-card text-white p-6 rounded-xl shadow-lg" style="--start-color: #3b82f6; --end-color: #1d4ed8;">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-100 text-sm font-medium">Total Livestock</p>
+                            <p class="text-3xl font-bold" id="dashboard-total">0</p>
+                        </div>
+                        <i class="fas fa-cow text-2xl text-blue-200"></i>
+                    </div>
+                </div>
+                
+                <div class="metric-card text-white p-6 rounded-xl shadow-lg" style="--start-color: #10b981; --end-color: #059669;">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-100 text-sm font-medium">Healthy</p>
+                            <p class="text-3xl font-bold" id="dashboard-healthy">0</p>
+                        </div>
+                        <i class="fas fa-heart text-2xl text-green-200"></i>
+                    </div>
+                </div>
+                
+                <div class="metric-card text-white p-6 rounded-xl shadow-lg" style="--start-color: #f59e0b; --end-color: #d97706;">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-yellow-100 text-sm font-medium">Pregnant</p>
+                            <p class="text-3xl font-bold" id="dashboard-pregnant">0</p>
+                        </div>
+                        <i class="fas fa-baby text-2xl text-yellow-200"></i>
+                    </div>
+                </div>
+                
+                <div class="metric-card text-white p-6 rounded-xl shadow-lg" style="--start-color: #ef4444; --end-color: #dc2626;">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-red-100 text-sm font-medium">Alerts</p>
+                            <p class="text-3xl font-bold" id="dashboard-alerts">0</p>
+                        </div>
+                        <i class="fas fa-exclamation-triangle text-2xl text-red-200"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8 mb-12">
+                <div class="glass-effect rounded-2xl shadow-xl p-8 card-hover border border-gray-200">
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full mb-6">
+                            <i class="fas fa-plus text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-gray-800" id="register-card-title">Register New Livestock</h3>
+                        <p class="text-gray-600 mb-6 leading-relaxed" id="register-card-desc">Create comprehensive digital profiles with health records, vaccination history, breeding information, and generate QR codes for instant access.</p>
+                        <button id="register-btn" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">
+                            <i class="fas fa-plus mr-2"></i>Register Now
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-effect rounded-2xl shadow-xl p-8 card-hover border border-gray-200">
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mb-6">
+                            <i class="fas fa-search text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-gray-800" id="search-card-title">Search & Track</h3>
+                        <p class="text-gray-600 mb-6 leading-relaxed" id="search-card-desc">Instantly find livestock profiles by tag number or scan QR codes. Access complete health records, vaccination status, and breeding information.</p>
+                        <button id="search-btn" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">
+                            <i class="fas fa-search mr-2"></i>Search Profile
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-effect rounded-2xl shadow-xl p-8 card-hover border border-gray-200">
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full mb-6">
+                            <i class="fas fa-chart-line text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-gray-800" id="analytics-card-title">Advanced Analytics</h3>
+                        <p class="text-gray-600 mb-6 leading-relaxed" id="analytics-card-desc">Comprehensive dashboard with vaccination schedules, pregnancy tracking, health trends, and predictive analytics for optimal herd management.</p>
+                        <button id="analytics-btn" class="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">
+                            <i class="fas fa-chart-line mr-2"></i>View Analytics
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+                <div class="glass-effect rounded-2xl shadow-xl p-8 border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                        <i class="fas fa-clock text-blue-500 mr-3"></i>
+                        <span id="recent-activity-title">Recent Activity</span>
+                    </h3>
+                    <div id="recent-activity-list" class="space-y-4">
+                        </div>
+                </div>
+
+                <div class="glass-effect rounded-2xl shadow-xl p-8 border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                        <i class="fas fa-star text-yellow-500 mr-3"></i>
+                        <span id="features-title">Key Features</span>
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-syringe text-green-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800" id="feature-1">Smart Vaccination Tracking</h4>
+                                <p class="text-sm text-gray-600" id="feature-1-desc">Automated reminders and scheduling</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-heart text-pink-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800" id="feature-2">Pregnancy Management</h4>
+                                <p class="text-sm text-gray-600" id="feature-2-desc">Complete breeding cycle tracking</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-thermometer-half text-orange-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800" id="feature-3">Heat Cycle Monitoring</h4>
+                                <p class="text-sm text-gray-600" id="feature-3-desc">Predictive breeding optimization</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-qrcode text-blue-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800" id="feature-4">QR Code Integration</h4>
+                                <p class="text-sm text-gray-600" id="feature-4-desc">Instant mobile access to records</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="registration-page" class="hidden fade-in">
+            <div class="glass-effect rounded-2xl shadow-2xl p-8 max-w-6xl mx-auto border border-gray-200">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full mb-4">
+                        <i id="reg-form-icon" class="fas fa-plus text-white text-2xl"></i>
+                    </div>
+                    <h2 class="text-4xl font-bold text-gray-800 mb-2" id="reg-title">Register New Livestock</h2>
+                    <p class="text-gray-600" id="reg-subtitle">Create a comprehensive digital profile for your livestock</p>
+                </div>
+                
+                <form id="cow-registration-form" class="space-y-8">
+                    <div class="mb-8">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-600">Registration Progress</span>
+                            <span class="text-sm font-medium text-gray-600" id="progress-text">0% Complete</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid lg:grid-cols-2 gap-8">
+                        <div class="space-y-6">
+                            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                    <i class="fas fa-info-circle text-blue-600 mr-3"></i>
+                                    <span id="basic-info-title">Basic Information</span>
+                                </h3>
+                                
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="cow-name-label">
+                                            <i class="fas fa-tag mr-1"></i>Livestock Name
+                                        </label>
+                                        <input type="text" id="cow-name" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter name">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="tag-number-label">
+                                            <i class="fas fa-barcode mr-1"></i>Tag Number
+                                        </label>
+                                        <input type="text" id="tag-number" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="e.g., COW001">
+                                    </div>
+                                </div>
+                                
+                                <div class="grid md:grid-cols-2 gap-4 mt-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="breed-label">
+                                            <i class="fas fa-dna mr-1"></i>Breed
+                                        </label>
+                                        <select id="breed" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                                            <option value="">Select Breed</option>
+                                            <option value="Holstein">Holstein Friesian</option>
+                                            <option value="Jersey">Jersey</option>
+                                            <option value="Gir">Gir</option>
+                                            <option value="Sahiwal">Sahiwal</option>
+                                            <option value="Red Sindhi">Red Sindhi</option>
+                                            <option value="Tharparkar">Tharparkar</option>
+                                            <option value="Crossbred">Crossbred</option>
+                                            <option value="Murrah">Murrah Buffalo</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="birth-date-label">
+                                            <i class="fas fa-calendar mr-1"></i>Birth Date
+                                        </label>
+                                        <input type="date" id="birth-date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
+                                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                    <i class="fas fa-user text-green-600 mr-3"></i>
+                                    <span id="owner-info-title">Owner Information</span>
+                                </h3>
+                                
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="owner-name-label">
+                                            <i class="fas fa-user-circle mr-1"></i>Owner Name
+                                        </label>
+                                        <input type="text" id="owner-name" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Full name">
+                                    </div>
+                                    
+                                    <div class="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2" id="contact-label">
+                                                <i class="fas fa-phone mr-1"></i>Contact Number
+                                            </label>
+                                            <input type="tel" id="contact" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="+91 9876543210">
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2" id="email-label">
+                                                <i class="fas fa-envelope mr-1"></i>Email (Optional)
+                                            </label>
+                                            <input type="email" id="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="owner@example.com">
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="address-label">
+                                            <i class="fas fa-map-marker-alt mr-1"></i>Farm Address
+                                        </label>
+                                        <textarea id="address" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Complete farm address"></textarea>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="passkey-label">
+                                            <i class="fas fa-lock mr-1"></i>Security Passkey
+                                        </label>
+                                        <input type="password" id="passkey" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Create a secure passkey">
+                                        <p class="text-xs text-gray-500 mt-1">This passkey will be required to edit the profile later</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="bg-gradient-to-r from-red-50 to-pink-50 p-6 rounded-xl border border-red-200">
+                                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                    <i class="fas fa-heartbeat text-red-600 mr-3"></i>
+                                    <span id="health-records-title">Health Records</span>
+                                </h3>
+                                
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="medical-history-label">
+                                            <i class="fas fa-file-medical mr-1"></i>Medical History
+                                        </label>
+                                        <textarea id="medical-history" rows="3" placeholder="Previous diseases, treatments, surgeries, etc." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"></textarea>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="current-medications-label">
+                                            <i class="fas fa-pills mr-1"></i>Current Medications
+                                        </label>
+                                        <textarea id="current-medications" rows="2" placeholder="Ongoing treatments, supplements, feed additives" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"></textarea>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="health-status-label">
+                                            <i class="fas fa-stethoscope mr-1"></i>Current Health Status
+                                        </label>
+                                        <select id="health-status" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
+                                            <option value="healthy">Healthy</option>
+                                            <option value="under-treatment">Under Treatment</option>
+                                            <option value="recovering">Recovering</option>
+                                            <option value="quarantine">Quarantine</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-xl border border-purple-200">
+                                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                    <i class="fas fa-syringe text-purple-600 mr-3"></i>
+                                    <span id="vaccination-title">Vaccination Records</span>
+                                </h3>
+                                
+                                <div id="vaccination-records" class="space-y-4">
+                                    <div class="vaccination-entry bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                                        <div class="grid md:grid-cols-3 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-semibold text-gray-700 mb-2" id="vaccine-name-label">
+                                                    <i class="fas fa-vial mr-1"></i>Vaccine Name
+                                                </label>
+                                                <input type="text" class="vaccine-name w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition-all" placeholder="e.g., FMD, Brucella">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-semibold text-gray-700 mb-2" id="vaccine-date-label">
+                                                    <i class="fas fa-calendar-check mr-1"></i>Date Given
+                                                </label>
+                                                <input type="date" class="vaccine-date w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition-all">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-semibold text-gray-700 mb-2" id="next-due-label">
+                                                    <i class="fas fa-clock mr-1"></i>Next Due
+                                                </label>
+                                                <input type="date" class="next-due w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition-all">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" id="add-vaccination" class="mt-4 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105">
+                                    <i class="fas fa-plus mr-2"></i>Add Vaccination
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid lg:grid-cols-2 gap-8">
+                        <div class="bg-gradient-to-r from-pink-50 to-rose-50 p-6 rounded-xl border border-pink-200">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                <i class="fas fa-baby text-pink-600 mr-3"></i>
+                                <span id="pregnancy-title">Pregnancy & Breeding</span>
+                            </h3>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2" id="pregnancy-status-label">
+                                        <i class="fas fa-heart mr-1"></i>Pregnancy Status
+                                    </label>
+                                    <select id="pregnancy-status" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all">
+                                        <option value="not-pregnant">Not Pregnant</option>
+                                        <option value="pregnant">Pregnant</option>
+                                        <option value="recently-calved">Recently Calved</option>
+                                        <option value="dry-period">Dry Period</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="breeding-date-label">
+                                            <i class="fas fa-calendar-heart mr-1"></i>Last Breeding Date
+                                        </label>
+                                        <input type="date" id="breeding-date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="expected-calving-label">
+                                            <i class="fas fa-baby-carriage mr-1"></i>Expected Calving
+                                        </label>
+                                        <input type="date" id="expected-calving" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2" id="breeding-method-label">
+                                        <i class="fas fa-dna mr-1"></i>Breeding Method
+                                    </label>
+                                    <select id="breeding-method" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all">
+                                        <option value="">Select Method</option>
+                                        <option value="artificial-insemination">Artificial Insemination</option>
+                                        <option value="natural-breeding">Natural Breeding</option>
+                                        <option value="embryo-transfer">Embryo Transfer</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-xl border border-orange-200">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                <i class="fas fa-thermometer-half text-orange-600 mr-3"></i>
+                                <span id="heat-cycle-title">Heat Cycle Tracking</span>
+                            </h3>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2" id="last-heat-label">
+                                        <i class="fas fa-calendar-alt mr-1"></i>Last Heat Date
+                                    </label>
+                                    <input type="date" id="last-heat" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+                                </div>
+                                
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="heat-cycle-length-label">
+                                            <i class="fas fa-clock mr-1"></i>Cycle Length (days)
+                                        </label>
+                                        <input type="number" id="heat-cycle-length" value="21" min="18" max="24" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2" id="next-heat-label">
+                                            <i class="fas fa-calendar-plus mr-1"></i>Next Expected Heat
+                                        </label>
+                                        <input type="date" id="next-heat" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 transition-all">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2" id="heat-intensity-label">
+                                        <i class="fas fa-fire mr-1"></i>Last Heat Intensity
+                                    </label>
+                                    <select id="heat-intensity" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+                                        <option value="">Select Intensity</option>
+                                        <option value="weak">Weak</option>
+                                        <option value="moderate">Moderate</option>
+                                        <option value="strong">Strong</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center space-x-6 pt-8 border-t border-gray-200">
+                        <button type="button" id="cancel-registration" class="px-8 py-3 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="submit" id="submit-registration-btn" class="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">
+                            <i class="fas fa-save mr-2"></i>Register Livestock
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="search-page" class="hidden fade-in">
+            <div class="glass-effect rounded-2xl shadow-2xl p-8 max-w-4xl mx-auto border border-gray-200">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mb-4">
+                        <i class="fas fa-search text-white text-2xl"></i>
+                    </div>
+                    <h2 class="text-4xl font-bold text-gray-800 mb-2" id="search-title">Search Livestock Profile</h2>
+                    <p class="text-gray-600">Find livestock by tag number or scan QR code</p>
+                </div>
+                
+                <div class="space-y-8">
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                        <label class="block text-lg font-semibold text-gray-700 mb-4" id="search-tag-label">
+                            <i class="fas fa-barcode mr-2"></i>Enter Tag Number
+                        </label>
+                        <div class="flex space-x-4">
+                            <input type="text" id="search-tag-input" placeholder="e.g., COW001, BUFFALO002" class="flex-1 px-6 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-lg">
+                            <button id="search-submit" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                                <i class="fas fa-search mr-2"></i>Search
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="inline-flex items-center space-x-4 text-gray-500 mb-6">
+                            <div class="h-px bg-gray-300 flex-1"></div>
+                            <span class="font-medium" id="or-scan-text">Or scan QR code with your phone camera</span>
+                            <div class="h-px bg-gray-300 flex-1"></div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200 mb-6">
+                            <div class="text-6xl mb-4">📱</div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-2">QR Code Scanner</h3>
+                            <p class="text-gray-600 mb-4">Point your phone camera at any CowTrack QR code to instantly access livestock profiles</p>
+                            <div class="inline-flex items-center space-x-2 text-sm text-gray-500">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Works with any smartphone camera app</span>
+                            </div>
+                        </div>
+                        
+                        <button id="back-to-home" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                            <i class="fas fa-home mr-2"></i>Back to Dashboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="profile-page" class="hidden fade-in">
+            <div class="glass-effect rounded-2xl shadow-2xl p-8 max-w-7xl mx-auto border border-gray-200">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 space-y-4 lg:space-y-0">
+                    <div>
+                        <h2 class="text-4xl font-bold text-gray-800 mb-2" id="profile-title">Livestock Profile</h2>
+                        <p class="text-gray-600" id="profile-subtitle">Complete health and breeding information</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <button id="edit-profile-btn" class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                            <i class="fas fa-edit mr-2"></i>Edit Profile
+                        </button>
+                        <button id="print-profile-btn" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                            <i class="fas fa-print mr-2"></i>Print
+                        </button>
+                        <button id="back-to-search" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                            <i class="fas fa-arrow-left mr-2"></i>Back
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="profile-content" class="space-y-8">
+                    </div>
+                
+                <div class="mt-12 bg-gradient-to-r from-green-50 to-emerald-50 p-8 rounded-xl border border-green-200">
+                    <h3 class="text-2xl font-bold text-center mb-6 text-gray-800" id="qr-title">
+                        <i class="fas fa-qrcode text-green-600 mr-3"></i>QR Code for Instant Access
+                    </h3>
+                    <div class="text-center">
+                        <div id="qr-code" class="inline-block p-4 bg-white rounded-xl shadow-lg border border-gray-200 mb-6"></div>
+                        <div class="space-x-4">
+                            <button id="download-qr" class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                                <i class="fas fa-download mr-2"></i>Download QR Code
+                            </button>
+                            <button id="share-profile" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                                <i class="fas fa-share mr-2"></i>Share Profile
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="analytics-page" class="hidden fade-in">
+            <div class="space-y-8">
+                <div class="glass-effect rounded-2xl shadow-2xl p-8 border border-gray-200">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 space-y-4 lg:space-y-0">
+                        <div>
+                            <h2 class="text-4xl font-bold text-gray-800 mb-2" id="analytics-title">Analytics Dashboard</h2>
+                            <p class="text-gray-600" id="analytics-subtitle">Comprehensive livestock management insights</p>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <button id="export-data" class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                                <i class="fas fa-file-export mr-2"></i>Export Data
+                            </button>
+                            <button id="back-from-analytics" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                                <i class="fas fa-home mr-2"></i>Back to Dashboard
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                        <div class="metric-card text-white p-6 rounded-xl shadow-lg" style="--start-color: #3b82f6; --end-color: #1d4ed8;">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-blue-100 text-sm font-medium" id="total-cows-label">Total Livestock</p>
+                                    <p class="text-3xl font-bold" id="total-cows">0</p>
+                                </div>
+                                <i class="fas fa-cow text-3xl text-blue-200"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card text-white p-6 rounded-xl shadow-lg" style="--start-color: #10b981; --end-color: #059669;">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-green-100 text-sm font-medium" id="pregnant-cows-label">Pregnant</p>
+                                    <p class="text-3xl font-bold" id="pregnant-cows">0</p>
+                                </div>
+                                <i class="fas fa-baby text-3xl text-green-200"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card text-white p-6 rounded-xl shadow-lg" style="--start-color: #f59e0b; --end-color: #d97706;">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-yellow-100 text-sm font-medium" id="due-vaccinations-label">Due Vaccinations</p>
+                                    <p class="text-3xl font-bold" id="due-vaccinations">0</p>
+                                    <p class="text-yellow-200 text-xs mt-1">(Next 30 days)</p>
+                                </div>
+                                <i class="fas fa-syringe text-3xl text-yellow-200"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card text-white p-6 rounded-xl shadow-lg" style="--start-color: #ef4444; --end-color: #dc2626;">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-red-100 text-sm font-medium" id="heat-alerts-label">Heat Alerts</p>
+                                    <p class="text-3xl font-bold" id="heat-alerts">0</p>
+                                    <p class="text-red-200 text-xs mt-1">(Next 7 days)</p>
+                                </div>
+                                <i class="fas fa-thermometer-half text-3xl text-red-200"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid lg:grid-cols-2 gap-8 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-bold mb-4 text-gray-800 flex items-center">
+                                <i class="fas fa-chart-pie text-blue-600 mr-3"></i>
+                                Herd Composition (by Breed)
+                            </h3>
+                            <canvas id="herd-chart" width="400" height="300"></canvas>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-bold mb-4 text-gray-800 flex items-center">
+                                <i class="fas fa-chart-line text-green-600 mr-3"></i>
+                                Health Status Overview
+                            </h3>
+                            <canvas id="health-chart" width="400" height="300"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="grid lg:grid-cols-2 gap-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-bold mb-6 text-gray-800 flex items-center">
+                                <i class="fas fa-bell text-yellow-600 mr-3"></i>
+                                <span id="upcoming-vaccinations-title">Upcoming Vaccinations</span>
+                            </h3>
+                            <div id="vaccination-alerts" class="space-y-4 max-h-80 overflow-y-auto">
+                                </div>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-bold mb-6 text-gray-800 flex items-center">
+                                <i class="fas fa-heart text-pink-600 mr-3"></i>
+                                <span id="breeding-alerts-title">Breeding & Pregnancy Alerts</span>
+                            </h3>
+                            <div id="pregnancy-alerts" class="space-y-4 max-h-80 overflow-y-auto">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="glass-effect rounded-2xl p-8 max-w-md w-full mx-4 border border-gray-200">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full mb-4">
+                    <i class="fas fa-lock text-white text-2xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2" id="edit-modal-title">Security Verification</h3>
+                <p class="text-gray-600" id="edit-modal-subtitle">Enter the passkey to edit this profile</p>
+            </div>
+            <div class="space-y-6">
+                <input type="password" id="edit-passkey" placeholder="Enter security passkey" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all">
+                <div class="flex space-x-4">
+                    <button id="cancel-edit" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-xl transition-all duration-300 font-semibold">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button id="confirm-edit" class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white py-3 rounded-xl transition-all duration-300 font-semibold">
+                        <i class="fas fa-check mr-2"></i>Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="success-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="glass-effect rounded-2xl p-8 max-w-md w-full mx-4 text-center border border-gray-200">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-500 to-green-600 rounded-full mb-6">
+                <i class="fas fa-check text-white text-3xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-4" id="success-title">Success!</h3>
+            <p id="success-message" class="text-gray-600 mb-8 text-lg">Operation completed successfully!</p>
+            <button id="close-success" class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold">
+                <i class="fas fa-check mr-2"></i>Continue
+            </button>
+        </div>
+    </div>
+
+    <div id="loading-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="glass-effect rounded-2xl p-8 text-center border border-gray-200">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-gray-700 font-medium">Processing...</p>
+        </div>
+    </div>
+
+    <div id="notification-container"></div>
+
+    <script>
+        // Enhanced multilingual support with comprehensive translations
+        const translations = {
+            en: {
+                // Navigation & Home
+                'nav-title': 'CowTrack', 'nav-subtitle': 'Smart Livestock Management', 'home-title': 'CowTrack', 'home-subtitle': 'Professional livestock management system with digital health profiles, QR code tracking, vaccination schedules, pregnancy monitoring, and comprehensive analytics for modern dairy farms.', 'register-card-title': 'Register New Livestock', 'register-card-desc': 'Create comprehensive digital profiles with health records, vaccination history, breeding information, and generate QR codes for instant access.', 'search-card-title': 'Search & Track', 'search-card-desc': 'Instantly find livestock profiles by tag number or scan QR codes. Access complete health records, vaccination status, and breeding information.', 'analytics-card-title': 'Advanced Analytics', 'analytics-card-desc': 'Comprehensive dashboard with vaccination schedules, pregnancy tracking, health trends, and predictive analytics for optimal herd management.', 'recent-activity-title': 'Recent Activity', 'features-title': 'Key Features', 'feature-1': 'Smart Vaccination Tracking', 'feature-1-desc': 'Automated reminders and scheduling', 'feature-2': 'Pregnancy Management', 'feature-2-desc': 'Complete breeding cycle tracking', 'feature-3': 'Heat Cycle Monitoring', 'feature-3-desc': 'Predictive breeding optimization', 'feature-4': 'QR Code Integration', 'feature-4-desc': 'Instant mobile access to records',
+                // Registration Form
+                'reg-title': 'Register New Livestock', 'reg-subtitle': 'Create a comprehensive digital profile for your livestock', 'basic-info-title': 'Basic Information', 'cow-name-label': 'Livestock Name', 'tag-number-label': 'Tag Number', 'breed-label': 'Breed', 'birth-date-label': 'Birth Date', 'owner-info-title': 'Owner Information', 'owner-name-label': 'Owner Name', 'contact-label': 'Contact Number', 'email-label': 'Email (Optional)', 'address-label': 'Farm Address', 'passkey-label': 'Security Passkey', 'health-records-title': 'Health Records', 'medical-history-label': 'Medical History', 'current-medications-label': 'Current Medications', 'health-status-label': 'Current Health Status', 'vaccination-title': 'Vaccination Records', 'vaccine-name-label': 'Vaccine Name', 'vaccine-date-label': 'Date Given', 'next-due-label': 'Next Due', 'pregnancy-title': 'Pregnancy & Breeding', 'pregnancy-status-label': 'Pregnancy Status', 'breeding-date-label': 'Last Breeding Date', 'expected-calving-label': 'Expected Calving', 'breeding-method-label': 'Breeding Method', 'heat-cycle-title': 'Heat Cycle Tracking', 'last-heat-label': 'Last Heat Date', 'heat-cycle-length-label': 'Cycle Length (days)', 'next-heat-label': 'Next Expected Heat', 'heat-intensity-label': 'Last Heat Intensity',
+                // Search & Profile
+                'search-title': 'Search Livestock Profile', 'search-tag-label': 'Enter Tag Number', 'or-scan-text': 'Or scan QR code with your phone camera', 'profile-title': 'Livestock Profile', 'profile-subtitle': 'Complete health and breeding information', 'qr-title': 'QR Code for Instant Access',
+                // Analytics
+                'analytics-title': 'Analytics Dashboard', 'analytics-subtitle': 'Comprehensive livestock management insights', 'total-cows-label': 'Total Livestock', 'pregnant-cows-label': 'Pregnant', 'due-vaccinations-label': 'Due Vaccinations', 'heat-alerts-label': 'Heat Alerts', 'upcoming-vaccinations-title': 'Upcoming Vaccinations', 'breeding-alerts-title': 'Breeding & Pregnancy Alerts',
+                // Modals
+                'edit-modal-title': 'Security Verification', 'edit-modal-subtitle': 'Enter the passkey to edit this profile', 'success-title': 'Success!'
+            },
+            mr: {
+                'nav-title': 'काऊट्रॅक', 'nav-subtitle': 'स्मार्ट पशुधन व्यवस्थापन', 'home-title': 'काऊट्रॅक', 'home-subtitle': 'आधुनिक डेअरी फार्मसाठी डिजिटल आरोग्य प्रोफाइल, QR कोड ट्रॅकिंग, लसीकरण वेळापत्रक, गर्भधारणा निरीक्षण आणि सर्वसमावेशक विश्लेषणासह व्यावसायिक पशुधन व्यवस्थापन प्रणाली.', 'register-card-title': 'नवीन पशुधन नोंदणी करा', 'register-card-desc': 'आरोग्य नोंदी, लसीकरण इतिहास, प्रजनन माहिती आणि त्वरित प्रवेशासाठी QR कोड तयार करून सर्वसमावेशक डिजिटल प्रोफाइल तयार करा.', 'search-card-title': 'शोधा आणि ट्रॅक करा', 'search-card-desc': 'टॅग नंबरद्वारे पशुधन प्रोफाइल त्वरित शोधा किंवा QR कोड स्कॅन करा. संपूर्ण आरोग्य नोंदी, लसीकरण स्थिती आणि प्रजनन माहितीमध्ये प्रवेश करा.', 'analytics-card-title': 'प्रगत विश्लेषण', 'analytics-card-desc': 'इष्टतम कळप व्यवस्थापनासाठी लसीकरण वेळापत्रक, गर्भधारणा ट्रॅकिंग, आरोग्य ट्रेंड आणि भविष्यसूचक विश्लेषणासह सर्वसमावेशक डॅशबोर्ड.', 'recent-activity-title': 'अलीकडील क्रियाकलाप', 'features-title': 'मुख्य वैशिष्ट्ये', 'feature-1': 'स्मार्ट लसीकरण ट्रॅकिंग', 'feature-1-desc': 'स्वयंचलित स्मरणपत्रे आणि वेळापत्रक', 'feature-2': 'गर्भधारणा व्यवस्थापन', 'feature-2-desc': 'संपूर्ण प्रजनन चक्र ट्रॅकिंग', 'feature-3': 'उष्णता चक्र निरीक्षण', 'feature-3-desc': 'भविष्यसूचक प्रजनन ऑप्टिमायझेशन', 'feature-4': 'QR कोड एकीकरण', 'feature-4-desc': 'नोंदींमध्ये त्वरित मोबाईल प्रवेश',
+                'reg-title': 'नवीन पशुधन नोंदणी करा', 'reg-subtitle': 'आपल्या पशुधनासाठी सर्वसमावेशक डिजिटल प्रोफाइल तयार करा', 'basic-info-title': 'मूलभूत माहिती', 'cow-name-label': 'पशुधनाचे नाव', 'tag-number-label': 'टॅग क्रमांक', 'breed-label': 'जात', 'birth-date-label': 'जन्मतारीख', 'owner-info-title': 'मालकाची माहिती', 'owner-name-label': 'मालकाचे नाव', 'contact-label': 'संपर्क क्रमांक', 'email-label': 'ईमेल (ऐच्छिक)', 'address-label': 'फार्मचा पत्ता', 'passkey-label': 'सुरक्षा पासकी', 'health-records-title': 'आरोग्य नोंदी', 'medical-history-label': 'वैद्यकीय इतिहास', 'current-medications-label': 'सध्याची औषधे', 'health-status-label': 'सध्याची आरोग्य स्थिती', 'vaccination-title': 'लसीकरण नोंदी', 'vaccine-name-label': 'लसीचे नाव', 'vaccine-date-label': 'दिलेली तारीख', 'next-due-label': 'पुढील देय तारीख', 'pregnancy-title': 'गर्भधारणा आणि प्रजनन', 'pregnancy-status-label': 'गर्भधारणा स्थिती', 'breeding-date-label': 'शेवटची प्रजनन तारीख', 'expected-calving-label': 'अपेक्षित वासरू जन्म', 'breeding-method-label': 'प्रजनन पद्धत', 'heat-cycle-title': 'उष्णता चक्र ट्रॅकिंग', 'last-heat-label': 'शेवटची उष्णता तारीख', 'heat-cycle-length-label': 'चक्र लांबी (दिवस)', 'next-heat-label': 'पुढील अपेक्षित उष्णता', 'heat-intensity-label': 'शेवटची उष्णता तीव्रता',
+                'search-title': 'पशुधन प्रोफाइल शोधा', 'search-tag-label': 'टॅग क्रमांक प्रविष्ट करा', 'or-scan-text': 'किंवा आपल्या फोन कॅमेऱ्याने QR कोड स्कॅन करा', 'profile-title': 'पशुधन प्रोफाइल', 'profile-subtitle': 'संपूर्ण आरोग्य आणि प्रजनन माहिती', 'qr-title': 'त्वरित प्रवेशासाठी QR कोड',
+                'analytics-title': 'विश्लेषण डॅशबोर्ड', 'analytics-subtitle': 'सर्वसमावेशक पशुधन व्यवस्थापन अंतर्दृष्टी', 'total-cows-label': 'एकूण पशुधन', 'pregnant-cows-label': 'गर्भवती', 'due-vaccinations-label': 'देय लसीकरण', 'heat-alerts-label': 'उष्णता सूचना', 'upcoming-vaccinations-title': 'आगामी लसीकरण', 'breeding-alerts-title': 'प्रजनन आणि गर्भधारणा सूचना',
+                'edit-modal-title': 'सुरक्षा पडताळणी', 'edit-modal-subtitle': 'हे प्रोफाइल संपादित करण्यासाठी पासकी प्रविष्ट करा', 'success-title': 'यशस्वी!'
+            },
+            hi: {
+                'nav-title': 'काउट्रैक', 'nav-subtitle': 'स्मार्ट पशुधन प्रबंधन', 'home-title': 'काउट्रैक', 'home-subtitle': 'आधुनिक डेयरी फार्मों के लिए डिजिटल स्वास्थ्य प्रोफाइल, QR कोड ट्रैकिंग, टीकाकरण कार्यक्रम, गर्भावस्था निगरानी और व्यापक विश्लेषण के साथ पेशेवर पशुधन प्रबंधन प्रणाली।', 'register-card-title': 'नया पशुधन पंजीकृत करें', 'register-card-desc': 'स्वास्थ्य रिकॉर्ड, टीकाकरण इतिहास, प्रजनन जानकारी और तत्काल पहुंच के लिए QR कोड के साथ व्यापक डिजिटल प्रोफाइल बनाएं।', 'search-card-title': 'खोजें और ट्रैक करें', 'search-card-desc': 'टैग नंबर द्वारा पशुधन प्रोफाइल तुरंत खोजें या QR कोड स्कैन करें। पूर्ण स्वास्थ्य रिकॉर्ड, टीकाकरण स्थिति और प्रजनन जानकारी तक पहुंचें।', 'analytics-card-title': 'उन्नत विश्लेषण', 'analytics-card-desc': 'इष्टतम झुंड प्रबंधन के लिए टीकाकरण कार्यक्रम, गर्भावस्था ट्रैकिंग, स्वास्थ्य रुझान और भविष्यसूचक विश्लेषण के साथ व्यापक डैशबोर्ड।', 'recent-activity-title': 'हाल की गतिविधि', 'features-title': 'मुख्य विशेषताएं', 'feature-1': 'स्मार्ट टीकाकरण ट्रैकिंग', 'feature-1-desc': 'स्वचालित अनुस्मारक और शेड्यूलिंग', 'feature-2': 'गर्भावस्था प्रबंधन', 'feature-2-desc': 'पूर्ण प्रजनन चक्र ट्रैकिंग', 'feature-3': 'गर्मी चक्र निगरानी', 'feature-3-desc': 'भविष्य कहनेवाला प्रजनन अनुकूलन', 'feature-4': 'QR कोड एकीकरण', 'feature-4-desc': 'रिकॉर्ड तक त्वरित मोबाइल पहुंच',
+                'reg-title': 'नया पशुधन पंजीकृत करें', 'reg-subtitle': 'अपने पशुधन के लिए एक व्यापक डिजिटल प्रोफ़ाइल बनाएं', 'basic-info-title': 'बुनियादी जानकारी', 'cow-name-label': 'पशुधन का नाम', 'tag-number-label': 'टैग नंबर', 'breed-label': 'नस्ल', 'birth-date-label': 'जन्म तिथि', 'owner-info-title': 'मालिक की जानकारी', 'owner-name-label': 'मालिक का नाम', 'contact-label': 'संपर्क संख्या', 'email-label': 'ईमेल (वैकल्पिक)', 'address-label': 'फार्म का पता', 'passkey-label': 'सुरक्षा पासकी', 'health-records-title': 'स्वास्थ्य रिकॉर्ड', 'medical-history-label': 'चिकित्सा इतिहास', 'current-medications-label': 'वर्तमान दवाएं', 'health-status-label': 'वर्तमान स्वास्थ्य स्थिति', 'vaccination-title': 'टीकाकरण रिकॉर्ड', 'vaccine-name-label': 'टीके का नाम', 'vaccine-date-label': 'दी गई तारीख', 'next-due-label': 'अगली देय तिथि', 'pregnancy-title': 'गर्भावस्था और प्रजनन', 'pregnancy-status-label': 'गर्भावस्था की स्थिति', 'breeding-date-label': 'अंतिम प्रजनन तिथि', 'expected-calving-label': 'अपेक्षित बछड़ा जन्म', 'breeding-method-label': 'प्रजनन विधि', 'heat-cycle-title': 'गर्मी चक्र ट्रैकिंग', 'last-heat-label': 'अंतिम गर्मी की तारीख', 'heat-cycle-length-label': 'चक्र की लंबाई (दिन)', 'next-heat-label': 'अगली अपेक्षित गर्मी', 'heat-intensity-label': 'अंतिम गर्मी की तीव्रता',
+                'search-title': 'पशुधन प्रोफाइल खोजें', 'search-tag-label': 'टैग नंबर दर्ज करें', 'or-scan-text': 'या अपने फोन कैमरे से QR कोड स्कैन करें', 'profile-title': 'पशुधन प्रोफाइल', 'profile-subtitle': 'पूर्ण स्वास्थ्य और प्रजनन जानकारी', 'qr-title': 'त्वरित पहुंच के लिए QR कोड',
+                'analytics-title': 'विश्लेषण डैशबोर्ड', 'analytics-subtitle': 'व्यापक पशुधन प्रबंधन अंतर्दृष्टि', 'total-cows-label': 'कुल पशुधन', 'pregnant-cows-label': 'गर्भवती', 'due-vaccinations-label': 'देय टीकाकरण', 'heat-alerts-label': 'गर्मी अलर्ट', 'upcoming-vaccinations-title': 'आगामी टीकाकरण', 'breeding-alerts-title': 'प्रजनन और गर्भावस्था अलर्ट',
+                'edit-modal-title': 'सुरक्षा सत्यापन', 'edit-modal-subtitle': 'इस प्रोफ़ाइल को संपादित करने के लिए पासकी दर्ज करें', 'success-title': 'सफलता!'
+            },
+            kn: { 'nav-title': 'ಕೌಟ್ರ್ಯಾಕ್', 'nav-subtitle': 'ಸ್ಮಾರ್ಟ್ ಪಶುಧನ ನಿರ್ವಹಣೆ', 'home-title': 'ಕೌಟ್ರ್ಯಾಕ್', 'home-subtitle': 'ಆಧುನಿಕ ಡೈರಿ ಫಾರ್ಮ್‌ಗಳಿಗಾಗಿ ಡಿಜಿಟಲ್ ಆರೋಗ್ಯ ಪ್ರೊಫೈಲ್‌ಗಳು, QR ಕೋಡ್ ಟ್ರ್ಯಾಕಿಂಗ್, ಲಸಿಕೆ ವೇಳಾಪಟ್ಟಿಗಳು, ಗರ್ಭಾವಸ್ಥೆ ಮೇಲ್ವಿಚಾರಣೆ ಮತ್ತು ಸಮಗ್ರ ವಿಶ್ಲೇಷಣೆಯೊಂದಿಗೆ ವೃತ್ತಿಪರ ಪಶುಧನ ನಿರ್ವಹಣಾ ವ್ಯವಸ್ಥೆ.', 'register-card-title': 'ಹೊಸ ಪಶುಧನವನ್ನು ನೋಂದಾಯಿಸಿ', 'search-card-title': 'ಹುಡುಕಿ ಮತ್ತು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ', 'analytics-card-title': 'ಸುಧಾರಿತ ವಿಶ್ಲೇಷಣೆ' },
+            gu: { 'nav-title': 'કાઉટ્રેક', 'nav-subtitle': 'સ્માર્ટ પશુધન વ્યવસ્થાપન', 'home-title': 'કાઉટ્રેક', 'home-subtitle': 'આધુનિક ડેરી ફાર્મ માટે ડિજિટલ આરોગ્ય પ્રોફાઇલ, QR કોડ ટ્રેકિંગ, રસીકરણ સમયપત્રક, ગર્ભાવસ્થા મોનિટરિંગ અને વ્યાપક વિશ્લેષણ સાથે વ્યાવસાયિક પશુધન વ્યવસ્થાપન સિસ્ટમ.', 'register-card-title': 'નવું પશુધન નોંધાવો', 'search-card-title': 'શોધો અને ટ્રેક કરો', 'analytics-card-title': 'અદ્યતન વિશ્લેષણ' }
+        };
+
+        // Global variables
+        let currentLanguage = 'en';
+        let cowDatabase = JSON.parse(localStorage.getItem('cowDatabase')) || [];
+        let currentCowId = null; // Used for editing profiles
+        let herdChart = null;
+        let healthChart = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            updateLanguage();
+            updateDashboard();
+            updateAnalytics();
+            calculateNextHeat();
+            updateClock();
+            setInterval(updateClock, 1000);
+            updateProgressBar();
+        });
+
+        function initializeEventListeners() {
+            // Language selector
+            document.getElementById('language-selector').addEventListener('change', (e) => {
+                currentLanguage = e.target.value;
+                updateLanguage();
+            });
+
+            // Mobile menu
+            document.getElementById('menu-toggle').addEventListener('click', toggleMobileSidebar);
+            document.getElementById('close-sidebar').addEventListener('click', closeMobileSidebar);
+            document.getElementById('sidebar-overlay').addEventListener('click', closeMobileSidebar);
+
+            // Navigation buttons
+            document.getElementById('register-btn').addEventListener('click', showRegistrationPage);
+            document.getElementById('search-btn').addEventListener('click', showSearchPage);
+            document.getElementById('analytics-btn').addEventListener('click', showAnalyticsPage);
+            
+            // Mobile navigation
+            document.getElementById('mobile-home').addEventListener('click', () => { closeMobileSidebar(); showHomePage(); });
+            document.getElementById('mobile-register').addEventListener('click', () => { closeMobileSidebar(); showRegistrationPage(); });
+            document.getElementById('mobile-search').addEventListener('click', () => { closeMobileSidebar(); showSearchPage(); });
+            document.getElementById('mobile-analytics').addEventListener('click', () => { closeMobileSidebar(); showAnalyticsPage(); });
+
+            // Back/Cancel buttons
+            document.getElementById('cancel-registration').addEventListener('click', showHomePage);
+            document.getElementById('back-to-home').addEventListener('click', showHomePage);
+            document.getElementById('back-to-search').addEventListener('click', showSearchPage);
+            document.getElementById('back-from-analytics').addEventListener('click', showHomePage);
+
+            // Form submissions and actions
+            document.getElementById('cow-registration-form').addEventListener('submit', handleRegistration);
+            document.getElementById('search-submit').addEventListener('click', handleSearch);
+            document.getElementById('add-vaccination').addEventListener('click', addVaccinationEntry);
+            document.getElementById('last-heat').addEventListener('change', calculateNextHeat);
+            document.getElementById('heat-cycle-length').addEventListener('change', calculateNextHeat);
+
+            // Profile page actions
+            document.getElementById('edit-profile-btn').addEventListener('click', showEditModal);
+            document.getElementById('cancel-edit').addEventListener('click', hideEditModal);
+            document.getElementById('confirm-edit').addEventListener('click', confirmEdit);
+            document.getElementById('download-qr').addEventListener('click', downloadQRCode);
+            document.getElementById('share-profile').addEventListener('click', shareProfile);
+            document.getElementById('print-profile-btn').addEventListener('click', printProfile);
+
+            // Analytics actions
+            document.getElementById('export-data').addEventListener('click', exportData);
+
+            // Modal actions
+            document.getElementById('close-success').addEventListener('click', hideSuccessModal);
+
+            // Search on Enter key press
+            document.getElementById('search-tag-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSearch();
+            });
+
+            // Form progress tracking for all inputs
+            const formInputs = document.querySelectorAll('#cow-registration-form input, #cow-registration-form select, #cow-registration-form textarea');
+            formInputs.forEach(input => {
+                input.addEventListener('input', updateProgressBar);
+                input.addEventListener('change', updateProgressBar);
+            });
+        }
+
+        // --- UI & Navigation ---
+
+        function toggleMobileSidebar() {
+            document.getElementById('mobile-sidebar').classList.add('open');
+            document.getElementById('sidebar-overlay').classList.add('show');
+        }
+
+        function closeMobileSidebar() {
+            document.getElementById('mobile-sidebar').classList.remove('open');
+            document.getElementById('sidebar-overlay').classList.remove('show');
+        }
+
+        function showPage(pageId) {
+            ['home-page', 'registration-page', 'search-page', 'profile-page', 'analytics-page'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(pageId).classList.remove('hidden');
+            window.scrollTo(0, 0); // Scroll to top on page change
+        }
+
+        function showHomePage() {
+            showPage('home-page');
+            updateDashboard();
+        }
+
+        function showRegistrationPage() {
+            resetRegistrationForm();
+            showPage('registration-page');
+            updateProgressBar();
+        }
+
+        function showSearchPage() {
+            currentCowId = null;
+            document.getElementById('search-tag-input').value = '';
+            showPage('search-page');
+        }
+
+        function showAnalyticsPage() {
+            showPage('analytics-page');
+            updateAnalytics();
+            setTimeout(initializeCharts, 100); // Allow time for canvas to be visible
+        }
+        
+        // --- Modals & Notifications ---
+
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<div class="flex items-center space-x-3"><i class="fas fa-${icon}"></i><span>${message}</span></div>`;
+            container.appendChild(notification);
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => container.removeChild(notification), 300);
+            }, 5000);
+        }
+
+        function showLoadingModal() { document.getElementById('loading-modal').classList.remove('hidden'); }
+        function hideLoadingModal() { document.getElementById('loading-modal').classList.add('hidden'); }
+        function showEditModal() { document.getElementById('edit-modal').classList.remove('hidden'); }
+        function hideEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
+
+        function showSuccessModal(message) {
+            document.getElementById('success-message').textContent = message;
+            document.getElementById('success-modal').classList.remove('hidden');
+        }
+        function hideSuccessModal() {
+            document.getElementById('success-modal').classList.add('hidden');
+            if(currentCowId){
+                const cow = cowDatabase.find(c => c.id === currentCowId);
+                if (cow) showCowProfile(cow);
+            } else {
+                showHomePage();
+            }
+        }
+        
+        // --- Core Logic & Data Handling ---
+
+        function handleRegistration(e) {
+            e.preventDefault();
+            showLoadingModal();
+            
+            setTimeout(() => {
+                const formData = getFormData();
+                
+                if (currentCowId) { // Update existing record
+                    const cowIndex = cowDatabase.findIndex(cow => cow.id === currentCowId);
+                    if (cowIndex !== -1) {
+                        formData.id = currentCowId; // Preserve original ID
+                        cowDatabase[cowIndex] = formData;
+                        saveDatabase();
+                        hideLoadingModal();
+                        showSuccessModal(`${formData.cowName} (Tag: ${formData.tagNumber}) has been successfully updated!`);
+                    }
+                } else { // Create new record
+                    if (cowDatabase.some(cow => cow.tagNumber.toLowerCase() === formData.tagNumber.toLowerCase())) {
+                        hideLoadingModal();
+                        showNotification('Tag number already exists! Please use a different one.', 'error');
+                        return;
+                    }
+                    formData.id = 'COW_' + Date.now();
+                    formData.registrationDate = new Date().toISOString();
+                    cowDatabase.push(formData);
+                    currentCowId = formData.id; // Set current ID to the new one
+                    saveDatabase();
+                    hideLoadingModal();
+                    showSuccessModal(`${formData.cowName} has been successfully registered with tag number ${formData.tagNumber}!`);
+                }
+
+                resetRegistrationForm();
+                updateDashboard();
+                updateAnalytics();
+            }, 1000);
+        }
+
+        function handleSearch() {
+            const tagNumber = document.getElementById('search-tag-input').value.trim();
+            if (!tagNumber) {
+                showNotification('Please enter a tag number', 'warning');
+                return;
+            }
+
+            showLoadingModal();
+            
+            setTimeout(() => {
+                const cow = cowDatabase.find(c => c.tagNumber.toLowerCase() === tagNumber.toLowerCase());
+                hideLoadingModal();
+                
+                if (cow) {
+                    currentCowId = cow.id;
+                    showCowProfile(cow);
+                    showNotification('Livestock profile found!', 'success');
+                } else {
+                    showNotification('Livestock not found! Please check the tag number.', 'error');
+                }
+            }, 800);
+        }
+
+        function confirmEdit() {
+            const passkey = document.getElementById('edit-passkey').value;
+            const cow = cowDatabase.find(c => c.id === currentCowId);
+            
+            if (cow && cow.passkey === passkey) {
+                hideEditModal();
+                showNotification('Verification successful. You can now edit the profile.', 'success');
+                loadProfileIntoForm(cow);
+            } else {
+                showNotification('Incorrect passkey. Please try again.', 'error');
+            }
+            document.getElementById('edit-passkey').value = '';
+        }
+
+        function loadProfileIntoForm(cow) {
+            resetRegistrationForm(); // Start with a clean slate
+            
+            // Set form to "Edit Mode"
+            document.getElementById('reg-title').textContent = 'Edit Livestock Profile';
+            document.getElementById('reg-subtitle').textContent = `Updating profile for ${cow.cowName} (Tag: ${cow.tagNumber})`;
+            document.getElementById('submit-registration-btn').innerHTML = `<i class="fas fa-save mr-2"></i>Update Profile`;
+            document.getElementById('reg-form-icon').className = 'fas fa-edit text-white text-2xl';
+            document.getElementById('tag-number').readOnly = true; // Prevent changing unique identifier
+            document.getElementById('tag-number').classList.add('bg-gray-200');
+
+            // Populate fields
+            document.getElementById('cow-name').value = cow.cowName;
+            document.getElementById('tag-number').value = cow.tagNumber;
+            document.getElementById('breed').value = cow.breed;
+            document.getElementById('birth-date').value = cow.birthDate;
+            document.getElementById('owner-name').value = cow.ownerName;
+            document.getElementById('contact').value = cow.contact;
+            document.getElementById('email').value = cow.email;
+            document.getElementById('address').value = cow.address;
+            document.getElementById('passkey').value = cow.passkey;
+            document.getElementById('medical-history').value = cow.medicalHistory;
+            document.getElementById('current-medications').value = cow.currentMedications;
+            document.getElementById('health-status').value = cow.healthStatus;
+            document.getElementById('pregnancy-status').value = cow.pregnancyStatus;
+            document.getElementById('breeding-date').value = cow.breedingDate;
+            document.getElementById('expected-calving').value = cow.expectedCalving;
+            document.getElementById('breeding-method').value = cow.breedingMethod;
+            document.getElementById('last-heat').value = cow.lastHeat;
+            document.getElementById('heat-cycle-length').value = cow.heatCycleLength;
+            document.getElementById('next-heat').value = cow.nextHeat;
+            document.getElementById('heat-intensity').value = cow.heatIntensity;
+
+            // Populate vaccinations
+            const container = document.getElementById('vaccination-records');
+            container.innerHTML = ''; // Clear existing
+            if (cow.vaccinations && cow.vaccinations.length > 0) {
+                cow.vaccinations.forEach(v => addVaccinationEntry(v));
+            } else {
+                addVaccinationEntry(); // Add one empty entry if none exist
+            }
+
+            showPage('registration-page');
+            updateProgressBar();
+        }
+
+        function getFormData() {
+            const formData = {
+                cowName: document.getElementById('cow-name').value,
+                tagNumber: document.getElementById('tag-number').value,
+                breed: document.getElementById('breed').value,
+                birthDate: document.getElementById('birth-date').value,
+                ownerName: document.getElementById('owner-name').value,
+                contact: document.getElementById('contact').value,
+                email: document.getElementById('email').value,
+                address: document.getElementById('address').value,
+                passkey: document.getElementById('passkey').value,
+                medicalHistory: document.getElementById('medical-history').value,
+                currentMedications: document.getElementById('current-medications').value,
+                healthStatus: document.getElementById('health-status').value,
+                pregnancyStatus: document.getElementById('pregnancy-status').value,
+                breedingDate: document.getElementById('breeding-date').value,
+                expectedCalving: document.getElementById('expected-calving').value,
+                breedingMethod: document.getElementById('breeding-method').value,
+                lastHeat: document.getElementById('last-heat').value,
+                heatCycleLength: document.getElementById('heat-cycle-length').value,
+                nextHeat: document.getElementById('next-heat').value,
+                heatIntensity: document.getElementById('heat-intensity').value,
+                vaccinations: []
+            };
+
+            const vaccinationEntries = document.querySelectorAll('.vaccination-entry');
+            vaccinationEntries.forEach(entry => {
+                const vaccineName = entry.querySelector('.vaccine-name').value.trim();
+                const vaccineDate = entry.querySelector('.vaccine-date').value;
+                if (vaccineName || vaccineDate) {
+                    formData.vaccinations.push({
+                        name: vaccineName,
+                        dateGiven: vaccineDate,
+                        nextDue: entry.querySelector('.next-due').value
+                    });
+                }
+            });
+            return formData;
+        }
+
+        function saveDatabase() {
+            localStorage.setItem('cowDatabase', JSON.stringify(cowDatabase));
+        }
+        
+        // --- Form Helpers ---
+
+        function addVaccinationEntry(vaccineData = {}) {
+            const container = document.getElementById('vaccination-records');
+            const entry = document.createElement('div');
+            entry.className = 'vaccination-entry bg-white p-4 rounded-lg border border-gray-200 shadow-sm mt-4 slide-in-left';
+            entry.innerHTML = `
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div><label class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-vial mr-1"></i>Vaccine Name</label><input type="text" class="vaccine-name w-full px-3 py-2 border border-gray-300 rounded-lg" value="${vaccineData.name || ''}" placeholder="e.g., FMD"></div>
+                    <div><label class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-calendar-check mr-1"></i>Date Given</label><input type="date" class="vaccine-date w-full px-3 py-2 border border-gray-300 rounded-lg" value="${vaccineData.dateGiven || ''}"></div>
+                    <div><label class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-clock mr-1"></i>Next Due</label><input type="date" class="next-due w-full px-3 py-2 border border-gray-300 rounded-lg" value="${vaccineData.nextDue || ''}"></div>
+                </div>
+                <button type="button" class="remove-vaccination mt-3 text-red-500 hover:text-red-700 text-sm font-medium"><i class="fas fa-trash mr-1"></i>Remove Entry</button>
+            `;
+            entry.querySelector('.remove-vaccination').addEventListener('click', () => entry.remove());
+            container.appendChild(entry);
+        }
+
+        function calculateNextHeat() {
+            const lastHeatDate = document.getElementById('last-heat').value;
+            const cycleLength = parseInt(document.getElementById('heat-cycle-length').value) || 21;
+            if (lastHeatDate) {
+                const lastHeat = new Date(lastHeatDate);
+                const nextHeat = new Date(lastHeat.getTime() + (cycleLength * 24 * 60 * 60 * 1000));
+                document.getElementById('next-heat').value = nextHeat.toISOString().split('T')[0];
+            }
+        }
+
+        function resetRegistrationForm() {
+            currentCowId = null;
+            document.getElementById('cow-registration-form').reset();
+            const vaccinationContainer = document.getElementById('vaccination-records');
+            vaccinationContainer.innerHTML = ''; // Clear all vaccine entries
+            addVaccinationEntry(); // Add one fresh entry back
+            
+            // Reset form to "Register Mode"
+            document.getElementById('reg-title').textContent = 'Register New Livestock';
+            document.getElementById('reg-subtitle').textContent = 'Create a comprehensive digital profile for your livestock';
+            document.getElementById('submit-registration-btn').innerHTML = `<i class="fas fa-save mr-2"></i>Register Livestock`;
+            document.getElementById('reg-form-icon').className = 'fas fa-plus text-white text-2xl';
+            document.getElementById('tag-number').readOnly = false;
+            document.getElementById('tag-number').classList.remove('bg-gray-200');
+            updateProgressBar();
+        }
+
+        function updateProgressBar() {
+            const form = document.getElementById('cow-registration-form');
+            if (!form) return;
+            const requiredInputs = form.querySelectorAll('input[required], select[required]');
+            const filledInputs = Array.from(requiredInputs).filter(input => input.value.trim() !== '');
+            const progress = requiredInputs.length > 0 ? (filledInputs.length / requiredInputs.length) * 100 : 0;
+            document.getElementById('progress-fill').style.width = `${progress}%`;
+            document.getElementById('progress-text').textContent = `${Math.round(progress)}% Complete`;
+        }
+
+        // --- Profile Page Display ---
+        
+        function showCowProfile(cow) {
+            showPage('profile-page');
+            const profileContent = document.getElementById('profile-content');
+            // This is where the critical error was fixed.
+            profileContent.innerHTML = `
+                <div class="grid lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-1">
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-100 p-6 rounded-2xl shadow-lg border border-blue-200 h-full">
+                            <div class="text-center mb-6">
+                                <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mb-4"><i class="fas fa-cow text-white text-3xl"></i></div>
+                                <h3 class="text-2xl font-bold text-gray-800">${cow.cowName}</h3>
+                                <p class="text-blue-600 font-semibold">${cow.tagNumber}</p>
+                                <div class="mt-3"><span class="status-badge ${getHealthStatusClass(cow.healthStatus)}"><i class="fas fa-heart mr-1"></i>${cow.healthStatus || 'Healthy'}</span></div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between"> <span class="text-gray-600 font-medium">Breed:</span><span class="font-semibold text-right">${cow.breed}</span></div>
+                                <div class="flex justify-between"> <span class="text-gray-600 font-medium">Age:</span><span class="font-semibold text-right">${calculateAge(cow.birthDate)}</span></div>
+                                <div class="flex justify-between"> <span class="text-gray-600 font-medium">Birth Date:</span><span class="font-semibold text-right">${formatDate(cow.birthDate)}</span></div>
+                                <div class="flex justify-between"> <span class="text-gray-600 font-medium">Registered:</span><span class="font-semibold text-right">${formatDate(cow.registrationDate)}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-100 p-6 rounded-2xl shadow-lg border border-green-200">
+                             <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-user text-green-600 mr-3"></i>Owner Information</h4>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div><p class="text-sm font-medium text-gray-600">Name</p><p class="font-semibold">${cow.ownerName}</p></div>
+                                <div><p class="text-sm font-medium text-gray-600">Contact</p><p class="font-semibold">${cow.contact}</p></div>
+                                ${cow.email ? `<div><p class="text-sm font-medium text-gray-600">Email</p><p class="font-semibold">${cow.email}</p></div>` : ''}
+                                ${cow.address ? `<div><p class="text-sm font-medium text-gray-600">Address</p><p class="font-semibold">${cow.address}</p></div>` : ''}
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-br from-red-50 to-pink-100 p-6 rounded-2xl shadow-lg border border-red-200">
+                             <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-heartbeat text-red-600 mr-3"></i>Health Records</h4>
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div><p class="text-gray-600 font-medium mb-2">Medical History</p><p class="bg-white p-3 rounded-lg border text-sm">${cow.medicalHistory || 'No history'}</p></div>
+                                <div><p class="text-gray-600 font-medium mb-2">Current Medications</p><p class="bg-white p-3 rounded-lg border text-sm">${cow.currentMedications || 'None'}</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid lg:grid-cols-3 gap-8 mt-8">
+                     <div class="bg-gradient-to-br from-purple-50 to-indigo-100 p-6 rounded-2xl shadow-lg border border-purple-200">
+                         <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-syringe text-purple-600 mr-3"></i>Vaccination Records</h4>
+                         ${cow.vaccinations && cow.vaccinations.length > 0 ? `<div class="space-y-3">${cow.vaccinations.map(v => `<div class="bg-white p-3 rounded-lg border"><div class="flex justify-between items-center"><h5 class="font-semibold">${v.name}</h5>${isVaccinationDue(v.nextDue) ? '<span class="status-badge status-alert">Due</span>' : '<span class="status-badge status-healthy">OK</span>'}</div><p class="text-sm text-gray-600">Given: ${formatDate(v.dateGiven)}, Next: ${formatDate(v.nextDue)}</p></div>`).join('')}</div>` : '<p class="text-gray-500">No vaccination records</p>'}
+                     </div>
+
+                    <div class="bg-gradient-to-br from-pink-50 to-rose-100 p-6 rounded-2xl shadow-lg border border-pink-200">
+                         <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-baby text-pink-600 mr-3"></i>Pregnancy & Breeding</h4>
+                         <div class="space-y-3">
+                            <div><p class="text-sm font-medium text-gray-600">Status</p><span class="status-badge ${getPregnancyStatusClass(cow.pregnancyStatus)}">${cow.pregnancyStatus?.replace('-', ' ').toUpperCase() || 'N/A'}</span></div>
+                             ${cow.breedingDate ? `<div><p class="text-sm font-medium text-gray-600">Last Breeding</p><p class="font-semibold">${formatDate(cow.breedingDate)}</p></div>` : ''}
+                             ${cow.expectedCalving ? `<div><p class="text-sm font-medium text-gray-600">Expected Calving</p><p class="font-semibold">${formatDate(cow.expectedCalving)}${isCalvingDue(cow.expectedCalving) ? ' <i class="fas fa-exclamation-triangle text-red-500"></i>' : ''}</p></div>` : ''}
+                         </div>
+                     </div>
+
+                     <div class="bg-gradient-to-br from-orange-50 to-yellow-100 p-6 rounded-2xl shadow-lg border border-orange-200">
+                         <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-thermometer-half text-orange-600 mr-3"></i>Heat Cycle</h4>
+                         <div class="space-y-3">
+                             ${cow.lastHeat ? `<div><p class="text-sm font-medium text-gray-600">Last Heat Date</p><p class="font-semibold">${formatDate(cow.lastHeat)}</p></div>` : ''}
+                             ${cow.nextHeat ? `<div><p class="text-sm font-medium text-gray-600">Next Expected Heat</p><p class="font-semibold">${formatDate(cow.nextHeat)}${isHeatDue(cow.nextHeat) ? ' <i class="fas fa-fire text-orange-500"></i>' : ''}</p></div>` : ''}
+                             ${cow.heatIntensity ? `<div><p class="text-sm font-medium text-gray-600">Last Heat Intensity</p><p class="font-semibold">${cow.heatIntensity}</p></div>` : ''}
+                         </div>
+                     </div>
+                </div>
+            `;
+            generateQRCode(cow.tagNumber);
+        }
+        
+        // --- Dashboards & Analytics ---
+
+        function updateDashboard() {
+            const total = cowDatabase.length;
+            const healthy = cowDatabase.filter(c => c.healthStatus === 'healthy').length;
+            const pregnant = cowDatabase.filter(c => c.pregnancyStatus === 'pregnant').length;
+            const alerts = calculateTotalAlerts();
+
+            document.getElementById('dashboard-total').textContent = total;
+            document.getElementById('dashboard-healthy').textContent = healthy;
+            document.getElementById('dashboard-pregnant').textContent = pregnant;
+            document.getElementById('dashboard-alerts').textContent = alerts;
+            document.getElementById('total-registered').textContent = `${total} Registered`;
+
+            const notifCountEl = document.getElementById('notification-count');
+            notifCountEl.textContent = alerts;
+            notifCountEl.classList.toggle('hidden', alerts === 0);
+
+            updateRecentActivity();
+        }
+
+        function updateRecentActivity() {
+            const listEl = document.getElementById('recent-activity-list');
+            if (cowDatabase.length === 0) {
+                listEl.innerHTML = `<div class="text-center text-gray-500 p-4">Register your first livestock to see activity.</div>`;
+                return;
+            }
+            const recent = cowDatabase.slice(-3).reverse();
+            listEl.innerHTML = recent.map(cow => `
+                <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-800">${cow.cowName} registered</p>
+                        <p class="text-xs text-gray-500">Tag: ${cow.tagNumber} • ${formatDate(cow.registrationDate)}</p>
+                    </div>
+                    <i class="fas fa-cow text-green-600"></i>
+                </div>
+            `).join('');
+        }
+        
+        function updateAnalytics() {
+            const total = cowDatabase.length;
+            const pregnant = cowDatabase.filter(c => c.pregnancyStatus === 'pregnant').length;
+            const dueVaccinations = cowDatabase.flatMap(c => c.vaccinations || []).filter(v => isVaccinationDue(v.nextDue, 30)).length;
+            const heatAlerts = cowDatabase.filter(c => isHeatDue(c.nextHeat, 7)).length;
+
+            document.getElementById('total-cows').textContent = total;
+            document.getElementById('pregnant-cows').textContent = pregnant;
+            document.getElementById('due-vaccinations').textContent = dueVaccinations;
+            document.getElementById('heat-alerts').textContent = heatAlerts;
+
+            updateAlertsSection('vaccination-alerts', getVaccinationAlerts(), 'No upcoming vaccinations.');
+            updateAlertsSection('pregnancy-alerts', getBreedingAlerts(), 'No upcoming breeding alerts.');
+        }
+        
+        function updateAlertsSection(elementId, alerts, emptyMessage) {
+            const container = document.getElementById(elementId);
+            if (alerts.length === 0) {
+                container.innerHTML = `<p class="text-gray-500 text-center p-4">${emptyMessage}</p>`;
+                return;
+            }
+            container.innerHTML = alerts.map(alert => `
+                <div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                    <div>
+                        <p class="font-semibold text-sm">${alert.name}</p>
+                        <p class="text-xs text-gray-600">${alert.detail}</p>
+                    </div>
+                    <span class="status-badge ${alert.badgeClass}">${alert.status}</span>
+                </div>
+            `).join('');
+        }
+
+        // --- Charting ---
+
+        function initializeCharts() {
+            if (!document.getElementById('analytics-page').classList.contains('hidden')) {
+                // Destroy existing charts to prevent duplicates
+                if (herdChart) herdChart.destroy();
+                if (healthChart) healthChart.destroy();
+
+                const herdData = cowDatabase.reduce((acc, cow) => {
+                    acc[cow.breed] = (acc[cow.breed] || 0) + 1;
+                    return acc;
+                }, {});
+                
+                const healthData = cowDatabase.reduce((acc, cow) => {
+                    const status = cow.healthStatus || 'healthy';
+                    acc[status] = (acc[status] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const herdCtx = document.getElementById('herd-chart').getContext('2d');
+                herdChart = new Chart(herdCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(herdData),
+                        datasets: [{ data: Object.values(herdData), backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+
+                const healthCtx = document.getElementById('health-chart').getContext('2d');
+                healthChart = new Chart(healthCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(healthData),
+                        datasets: [{ label: 'Health Status', data: Object.values(healthData), backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#6366F1'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+            }
+        }
+        
+        // --- Language & Localization ---
+
+        function updateLanguage() {
+            const langData = translations[currentLanguage] || translations.en;
+            for (const key in langData) {
+                const element = document.getElementById(key);
+                if (element) {
+                    element.innerHTML = langData[key]; // Use innerHTML to support icons in labels
+                }
+            }
+        }
+
+        // --- Helper & Utility Functions ---
+
+        function calculateAge(birthDate) {
+            if (!birthDate || isNaN(new Date(birthDate))) return 'N/A';
+            const ageDifMs = Date.now() - new Date(birthDate).getTime();
+            const ageDate = new Date(ageDifMs);
+            const years = Math.abs(ageDate.getUTCFullYear() - 1970);
+            const months = ageDate.getUTCMonth();
+            return `${years} years, ${months} months`;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString || isNaN(new Date(dateString))) return 'N/A';
+            return new Date(dateString).toLocaleDateString();
+        }
+
+        function isVaccinationDue(dateString, days = 30) {
+            if (!dateString) return false;
+            const dueDate = new Date(dateString);
+            const today = new Date();
+            const limitDate = new Date(today.getTime() + (days * 24 * 60 * 60 * 1000));
+            return dueDate >= today && dueDate <= limitDate;
+        }
+
+        function isCalvingDue(dateString, days = 30) { return isVaccinationDue(dateString, days); }
+        function isHeatDue(dateString, days = 7) { return isVaccinationDue(dateString, days); }
+        
+        function calculateTotalAlerts() {
+            return getVaccinationAlerts().length + getBreedingAlerts().length;
+        }
+        
+        function getVaccinationAlerts() {
+            return cowDatabase.flatMap(c => (c.vaccinations || []).filter(v => isVaccinationDue(v.nextDue)).map(v => ({
+                name: `${c.cowName} (${c.tagNumber})`, detail: `Vaccine: ${v.name} due on ${formatDate(v.nextDue)}`, status: 'Due', badgeClass: 'status-alert'
+            })));
+        }
+
+        function getBreedingAlerts() {
+            let alerts = [];
+            cowDatabase.forEach(c => {
+                if (isCalvingDue(c.expectedCalving)) {
+                    alerts.push({ name: `${c.cowName} (${c.tagNumber})`, detail: `Expected calving on ${formatDate(c.expectedCalving)}`, status: 'Calving Due', badgeClass: 'status-due' });
+                }
+                if (isHeatDue(c.nextHeat)) {
+                    alerts.push({ name: `${c.cowName} (${c.tagNumber})`, detail: `Expected heat on ${formatDate(c.nextHeat)}`, status: 'Heat Due', badgeClass: 'status-pregnant' });
+                }
+            });
+            return alerts;
+        }
+
+        function getHealthStatusClass(status) {
+            if (status === 'under-treatment' || status === 'quarantine') return 'status-alert';
+            return 'status-healthy';
+        }
+
+        function getPregnancyStatusClass(status) {
+            if (status === 'pregnant') return 'status-pregnant';
+            if (status === 'recently-calved') return 'status-due';
+            return 'status-healthy';
+        }
+
+        function generateQRCode(tagNumber) {
+            const qrContainer = document.getElementById('qr-code');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: `${window.location.href.split('?')[0]}?tag=${tagNumber}`,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+        
+        function downloadQRCode() {
+            const qrCanvas = document.querySelector('#qr-code canvas');
+            if (qrCanvas) {
+                const link = document.createElement('a');
+                link.download = `cowtrack_qr_${currentCowId}.png`;
+                link.href = qrCanvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+                link.click();
+            }
+        }
+
+        function shareProfile() {
+            const cow = cowDatabase.find(c => c.id === currentCowId);
+            if(navigator.share && cow) {
+                navigator.share({
+                    title: `CowTrack Profile: ${cow.cowName}`,
+                    text: `View the health and breeding profile for ${cow.cowName} (Tag: ${cow.tagNumber}).`,
+                    url: `${window.location.href.split('?')[0]}?tag=${cow.tagNumber}`
+                }).then(() => showNotification('Profile shared successfully!', 'success'))
+                  .catch(console.error);
+            } else {
+                showNotification('Web Share API not supported in your browser.', 'info');
+            }
+        }
+
+        function printProfile() { window.print(); }
+        
+        function exportData() {
+            if (cowDatabase.length === 0) {
+                showNotification('No data to export.', 'warning');
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cowDatabase, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "cowtrack_data.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            showNotification('Data exported successfully!', 'success');
+        }
+
+        function updateClock() {
+            document.getElementById('current-time').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    </script>
+</body>
+</html>
