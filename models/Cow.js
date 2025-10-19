@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+
 const CowSchema = new mongoose.Schema({
   name: { type: String, required: true },
   tagNumber: { type: String, required: true, unique: true },
@@ -11,6 +12,8 @@ const CowSchema = new mongoose.Schema({
   passkeyHash: { type: String },
   pregnancyRecords: [{ startDate: Date, expectedCalvingDate: Date, notes: String }],
   heatCycles: [{ date: Date, notes: String }],
-  createdAt: { type: Date, default: Date.now }
+  qrCode: { type: String }, // 🆕 Add this field
+  createdAt: { type: Date, default: Date.now },
 });
+
 export default mongoose.models.Cow || mongoose.model('Cow', CowSchema);
