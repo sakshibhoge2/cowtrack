@@ -1129,42 +1129,61 @@
         
         // --- Core Logic & Data Handling ---
 
-        function handleRegistration(e) {
-            e.preventDefault();
-            showLoadingModal();
-            
-            setTimeout(() => {
-                const formData = getFormData();
-                
-                if (currentCowId) { // Update existing record
-                    const cowIndex = cowDatabase.findIndex(cow => cow.id === currentCowId);
-                    if (cowIndex !== -1) {
-                        formData.id = currentCowId; // Preserve original ID
-                        cowDatabase[cowIndex] = formData;
-                        saveDatabase();
-                        hideLoadingModal();
-                        showSuccessModal(`${formData.cowName} (Tag: ${formData.tagNumber}) has been successfully updated!`);
-                    }
-                } else { // Create new record
-                    if (cowDatabase.some(cow => cow.tagNumber.toLowerCase() === formData.tagNumber.toLowerCase())) {
-                        hideLoadingModal();
-                        showNotification('Tag number already exists! Please use a different one.', 'error');
-                        return;
-                    }
-                    formData.id = 'COW_' + Date.now();
-                    formData.registrationDate = new Date().toISOString();
-                    cowDatabase.push(formData);
-                    currentCowId = formData.id; // Set current ID to the new one
-                    saveDatabase();
-                    hideLoadingModal();
-                    showSuccessModal(`${formData.cowName} has been successfully registered with tag number ${formData.tagNumber}!`);
-                }
+      async function handleRegistration(e) {
+         e.preventDefault();
+         showLoadingModal();
 
-                resetRegistrationForm();
-                updateDashboard();
-                updateAnalytics();
-            }, 1000);
+    try {
+        const formData = getFormData(); // existing helper that reads all inputs
+
+        const response = await fetch('/api/cow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: formData.cowName,
+                tagNumber: formData.tagNumber,
+                breed: formData.breed,
+                ownerName: formData.ownerName,
+                ownerContact: formData.contact,
+                medicalHistory: formData.medicalHistory,
+                vaccinations: formData.vaccinations || [],
+                nextVaccinationDate: formData.nextDue || null,
+                passkeyHash: formData.passkey,
+                pregnancyRecords: [{
+                    startDate: formData.breedingDate || null,
+                    expectedCalvingDate: formData.expectedCalving || null,
+                    notes: formData.pregnancyStatus
+                }],
+                heatCycles: [{
+                    date: formData.lastHeat || null,
+                    notes: formData.heatIntensity
+                }]
+            })
+        });
+
+        const result = await response.json();
+        hideLoadingModal();
+
+        if (response.ok && result.success) {
+            showSuccessModal(`✅ ${result.cow.name} registered successfully!`);
+            console.log('Registered Cow:', result.cow);
+
+            // 🖼️ Display the QR code on success
+            const qrContainer = document.getElementById('qr-code');
+            qrContainer.innerHTML = `<img src="${result.cow.qrCode}" class="mx-auto rounded-lg shadow-lg" alt="QR Code" />`;
+
+            // Save for local viewing (optional)
+            localStorage.setItem('lastCow', JSON.stringify(result.cow));
+        } else {
+            showNotification(result.message || 'Failed to register cow.', 'error');
         }
+    } catch (err) {
+        console.error(err);
+        hideLoadingModal();
+        showNotification('Error connecting to server. Please check backend.', 'error');
+    }
+  }
+
 
         function handleSearch() {
             const tagNumber = document.getElementById('search-tag-input').value.trim();
@@ -1423,24 +1442,30 @@
         
         // --- Dashboards & Analytics ---
 
-        function updateDashboard() {
-            const total = cowDatabase.length;
-            const healthy = cowDatabase.filter(c => c.healthStatus === 'healthy').length;
-            const pregnant = cowDatabase.filter(c => c.pregnancyStatus === 'pregnant').length;
-            const alerts = calculateTotalAlerts();
+      // Fetch total livestock count from backend
+async function updateDashboardStats() {
+    try {
+        const res = await fetch('/api/cow');
+        const cows = await res.json();
 
-            document.getElementById('dashboard-total').textContent = total;
-            document.getElementById('dashboard-healthy').textContent = healthy;
-            document.getElementById('dashboard-pregnant').textContent = pregnant;
-            document.getElementById('dashboard-alerts').textContent = alerts;
-            document.getElementById('total-registered').textContent = `${total} Registered`;
+        // Update frontend stats
+        document.getElementById('dashboard-total').textContent = cows.length;
+        document.getElementById('total-registered').textContent = `${cows.length} Registered`;
 
-            const notifCountEl = document.getElementById('notification-count');
-            notifCountEl.textContent = alerts;
-            notifCountEl.classList.toggle('hidden', alerts === 0);
+        // You can filter cows by health, pregnancy, etc.
+        const healthyCount = cows.filter(c => c.healthStatus === 'healthy').length;
+        const pregnantCount = cows.filter(c => c.pregnancyRecords?.some(p => p.status === 'pregnant')).length;
 
-            updateRecentActivity();
-        }
+        document.getElementById('dashboard-healthy').textContent = healthyCount;
+        document.getElementById('dashboard-pregnant').textContent = pregnantCount;
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+}
+
+// Run this when page loads
+document.addEventListener('DOMContentLoaded', updateDashboardStats);
+
 
         function updateRecentActivity() {
             const listEl = document.getElementById('recent-activity-list');

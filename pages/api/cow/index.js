@@ -13,21 +13,12 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const cowData = req.body;
-
-      // 🐄 Create cow record
       const newCow = await Cow.create(cowData);
 
-      // 🔗 Data to encode in QR code (keep it simple & unique)
-      const qrData = JSON.stringify({
-        id: newCow._id,
-        tagNumber: newCow.tagNumber,
-        ownerName: newCow.ownerName,
-      });
-
-      // 🧾 Generate base64 QR image
+      // ✅ QR links directly to cow's detail page
+      const qrData = `http://localhost:3000/cow/${newCow._id}`;
       const qrImage = await QRCode.toDataURL(qrData);
 
-      // 💾 Save QR image in DB
       newCow.qrCode = qrImage;
       await newCow.save();
 
