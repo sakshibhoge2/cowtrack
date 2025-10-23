@@ -16,7 +16,11 @@ export default async function handler(req, res) {
       const newCow = await Cow.create(cowData);
 
       // ✅ QR links directly to cow's detail page
-      const qrData = `http://localhost:3000/cow/${newCow._id}`;
+      const qrData = `https://cowtrack.onrender.com/cow/${newCow._id}`;
+
+
+
+
       const qrImage = await QRCode.toDataURL(qrData);
 
       newCow.qrCode = qrImage;
