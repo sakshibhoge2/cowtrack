@@ -1,5 +1,5 @@
-import dbConnect from '../../../lib/mongodb';
-import Cow from '../../../models/Cow';
+import dbConnect from '../../../../lib/mongodb';
+import Cow from '../../../../models/Cow';
 
 
 import bcrypt from 'bcryptjs';
