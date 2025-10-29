@@ -1,177 +1,922 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>CowTrack — Smart Livestock Management</title>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<style>
-  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: #f8fafc; }
-  .glass-effect { background: rgba(255,255,255,0.92); backdrop-filter: blur(6px); border: 1px solid rgba(0,0,0,0.04); }
-  .mic-btn{ position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#10b981; color:white; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:9999px; cursor:pointer;}
-  .hidden{display:none;}
-  .fade-in { animation: fadeIn .35s ease both; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
-  .notification { position: fixed; top: 20px; right: 20px; padding: 12px 16px; border-radius:8px; color:white; display:none; z-index:60; }
-  .notif-success{ background:#10b981; } .notif-error{ background:#ef4444; } .notif-info{ background:#3b82f6; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CowTrack — Smart Livestock Management</title>
+
+  <!-- Tailwind + icons + QR + Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: #f8fafc; }
+    .glass-effect { background: rgba(255,255,255,0.95); backdrop-filter: blur(6px); border: 1px solid rgba(0,0,0,0.04); }
+    .mic-btn{ position:relative; background:#10b981; color:white; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:9999px; cursor:pointer;}
+    .hidden{display:none;}
+    .fade-in { animation: fadeIn .35s ease both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+    .notification { position: fixed; top: 20px; right: 20px; padding: 12px 16px; border-radius:8px; color:white; display:none; z-index:60; }
+    .notif-success{ background:#10b981; } .notif-error{ background:#ef4444; } .notif-info{ background:#3b82f6; }
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
+    .metric-card { border-radius: .75rem; padding: 1.25rem; color: white; }
+    .small { font-size: .85rem; }
+    table { width: 100%; border-collapse: collapse; }
+    table th, table td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
+    .qr-preview { width: 180px; height: 180px; margin: 0 auto; display:block; }
+  </style>
 </head>
-<body>
-<nav class="bg-gradient-to-r from-green-600 to-blue-600 text-white p-4 shadow-md">
-  <div class="max-w-7xl mx-auto flex items-center justify-between">
-    <div class="flex items-center gap-4">
-      <div class="bg-white rounded-full p-2 text-green-600"><i class="fas fa-cow fa-lg"></i></div>
-      <div>
-        <div class="text-xl font-bold">CowTrack</div>
-        <div class="text-sm opacity-90">Smart Livestock Management</div>
-      </div>
-    </div>
-    <div class="flex items-center gap-4">
-      <button id="nav-home" class="px-3 py-1 hover:bg-white/10 rounded">Home</button>
-      <button id="nav-register" class="px-3 py-1 hover:bg-white/10 rounded">Register</button>
-      <button id="nav-search" class="px-3 py-1 hover:bg-white/10 rounded">Search</button>
-      <button id="nav-analytics" class="px-3 py-1 hover:bg-white/10 rounded">Analytics</button>
-    </div>
-  </div>
-</nav>
-<div id="notification" class="notification"></div>
-<main class="max-w-7xl mx-auto p-6 space-y-8">
-  <section id="page-home" class="fade-in">
-    <div class="grid md:grid-cols-3 gap-6">
-      <div class="glass-effect p-6 rounded-lg shadow">
-        <h2 class="text-2xl font-bold">Welcome</h2>
-        <p class="text-gray-600 mt-2">CowTrack — digital health profiles, QR tagging, vaccination scheduling, pregnancy & heat tracking.</p>
-        <div class="mt-4 text-sm text-gray-700">Total Registered: <span id="stat-total" class="font-bold">0</span></div>
-      </div>
-      <div class="glass-effect p-6 rounded-lg shadow">
-        <h3 class="font-semibold">Quick Actions</h3>
-        <div class="grid gap-3 mt-3">
-          <button id="cta-register" class="bg-green-600 text-white rounded px-4 py-2">Register Cow</button>
-          <button id="cta-search" class="bg-blue-600 text-white rounded px-4 py-2">Search Profile</button>
-        </div>
-      </div>
-      <div class="glass-effect p-6 rounded-lg shadow">
-        <h3 class="font-semibold">Recent Activity</h3>
-        <ul id="recent-list" class="mt-3 text-sm text-gray-700"></ul>
-      </div>
-    </div>
-  </section>
-  <section id="page-register" class="hidden">
-    <div class="glass-effect p-6 rounded-lg shadow">
-      <h2 class="text-2xl font-bold mb-4">Register New Livestock</h2>
-      <form id="registerForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="space-y-4">
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Cow Name</label>
-            <input id="cow_name" name="cow_name" class="w-full border rounded px-3 py-2" required>
-            <div class="mic-btn" onclick="startSpeech('cow_name')"><i class="fas fa-microphone"></i></div>
-          </div>
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Tag Number</label>
-            <input id="tag_number" name="tag_number" class="w-full border rounded px-3 py-2" required>
-          </div>
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Breed</label>
-            <input id="breed" name="breed" class="w-full border rounded px-3 py-2">
-          </div>
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Birth Date</label>
-            <input id="birth_date" name="birth_date" type="date" class="w-full border rounded px-3 py-2">
-          </div>
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Owner Name</label>
-            <input id="owner_name" name="owner_name" class="w-full border rounded px-3 py-2">
-            <div class="mic-btn" onclick="startSpeech('owner_name')"><i class="fas fa-microphone"></i></div>
-          </div>
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Owner Contact</label>
-            <input id="owner_contact" name="owner_contact" class="w-full border rounded px-3 py-2">
-          </div>
-        </div>
-        <div class="space-y-4">
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Medical History</label>
-            <textarea id="medical_history" name="medical_history" class="w-full border rounded px-3 py-2" rows="4"></textarea>
-            <div class="mic-btn" onclick="startSpeech('medical_history')"><i class="fas fa-microphone"></i></div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-sm font-medium mb-1">Vaccine Name</label>
-              <input id="vaccine_name" name="vaccine_name" class="w-full border rounded px-3 py-2">
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Vaccine Date</label>
-              <input id="vaccine_date" name="vaccine_date" type="date" class="w-full border rounded px-3 py-2">
-            </div>
+<body class="bg-gray-50">
+
+  <!-- NAV -->
+  <nav class="gradient-bg shadow-xl border-b-4 border-green-400 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-20">
+        <div class="flex items-center space-x-4">
+          <div class="bg-white p-2 rounded-xl shadow-lg">
+            <i class="fas fa-cow text-green-600 text-2xl"></i>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1">Next Vaccination Date</label>
-            <input id="next_vaccination" name="next_vaccination" type="date" class="w-full border rounded px-3 py-2">
-          </div>
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Pregnancy Status / Notes</label>
-            <textarea id="pregnancy_notes" name="pregnancy_notes" class="w-full border rounded px-3 py-2" rows="3"></textarea>
-            <div class="mic-btn" onclick="startSpeech('pregnancy_notes')"><i class="fas fa-microphone"></i></div>
-          </div>
-          <div class="relative">
-            <label class="block text-sm font-medium mb-1">Passkey (for editing)</label>
-            <input id="passkey" name="passkey" type="password" class="w-full border rounded px-3 py-2" required>
+            <h1 class="text-2xl font-bold text-white" data-i18n="title">CowTrack</h1>
+            <p class="text-green-100 text-sm" data-i18n="nav-subtitle">Smart Livestock Management</p>
           </div>
         </div>
-        <div class="md:col-span-2 flex justify-end gap-3 mt-2">
-          <button type="button" id="cancelRegister" class="px-4 py-2 rounded bg-gray-200">Cancel</button>
-          <button type="submit" class="px-4 py-2 rounded bg-green-600 text-white">Register Livestock</button>
+
+        <div class="flex items-center space-x-4">
+          <div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2">
+            <span class="text-white text-sm font-medium" id="current-time"></span>
+          </div>
+
+          <select id="langSelect" class="rounded px-2 py-1 text-sm">
+            <option value="en">English</option>
+            <option value="hi">हिन्दी</option>
+            <option value="mr">मराठी</option>
+            <option value="gu">ગુજરાતી</option>
+            <option value="kn">ಕನ್ನಡ</option>
+          </select>
+
+          <div>
+            <button id="nav-home" class="text-white px-3 py-2 hover:text-green-200" data-i18n="nav-home">Home</button>
+            <button id="nav-register" class="text-white px-3 py-2 hover:text-green-200" data-i18n="nav-register">Register</button>
+            <button id="nav-search" class="text-white px-3 py-2 hover:text-green-200" data-i18n="nav-search">Search</button>
+            <button id="nav-manage" class="text-white px-3 py-2 hover:text-green-200" data-i18n="nav-manage">Manage</button>
+            <button id="nav-analytics" class="text-white px-3 py-2 hover:text-green-200" data-i18n="nav-analytics">Analytics</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div id="notification" class="notification"></div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- HOME -->
+    <section id="page-home" class="fade-in">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-green-500 to-blue-600 rounded-full mb-6 pulse-glow">
+          <i class="fas fa-cow text-white text-4xl"></i>
+        </div>
+        <h2 class="text-4xl font-bold text-gray-800 mb-2" data-i18n="title">CowTrack</h2>
+        <p class="text-lg text-gray-600 max-w-3xl mx-auto" data-i18n="subtitle">Professional livestock management system with digital health profiles, QR code tracking, vaccination schedules, pregnancy monitoring, and analytics.</p>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+        <div class="metric-card" style="background: linear-gradient(135deg,#3b82f6,#1d4ed8);">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-blue-100 text-sm font-medium" data-i18n="total-livestock">Total Livestock</p>
+              <p class="text-3xl font-bold" id="dashboard-total">0</p>
+            </div>
+            <i class="fas fa-cow text-2xl text-blue-200"></i>
+          </div>
+        </div>
+        <div class="metric-card" style="background: linear-gradient(135deg,#10b981,#059669);">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-green-100 text-sm font-medium" data-i18n="healthy">Healthy</p>
+              <p class="text-3xl font-bold" id="dashboard-healthy">0</p>
+            </div>
+            <i class="fas fa-heart text-2xl text-green-200"></i>
+          </div>
+        </div>
+        <div class="metric-card" style="background: linear-gradient(135deg,#f59e0b,#d97706);">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-yellow-100 text-sm font-medium" data-i18n="pregnant">Pregnant</p>
+              <p class="text-3xl font-bold" id="dashboard-pregnant">0</p>
+            </div>
+            <i class="fas fa-baby text-2xl text-yellow-200"></i>
+          </div>
+        </div>
+        <div class="metric-card" style="background: linear-gradient(135deg,#ef4444,#dc2626);">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-red-100 text-sm font-medium" data-i18n="alerts">Alerts</p>
+              <p class="text-3xl font-bold" id="dashboard-alerts">0</p>
+            </div>
+            <i class="fas fa-exclamation-triangle text-2xl text-red-200"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6 mb-8">
+        <div class="glass-effect rounded-2xl p-6 card-hover">
+          <h3 class="text-xl font-bold mb-2" data-i18n="reg-card-title">Register New Livestock</h3>
+          <p class="text-gray-600 mb-4" data-i18n="reg-card-desc">Create comprehensive digital profiles with health records and QR codes.</p>
+          <button id="cta-register" class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl" data-i18n="register-now">Register Now</button>
+        </div>
+        <div class="glass-effect rounded-2xl p-6 card-hover">
+          <h3 class="text-xl font-bold mb-2" data-i18n="search-card-title">Search & Track</h3>
+          <p class="text-gray-600 mb-4" data-i18n="search-card-desc">Find livestock profiles or scan QR codes.</p>
+          <button id="cta-search" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl" data-i18n="search-now">Search Profile</button>
+        </div>
+        <div class="glass-effect rounded-2xl p-6 card-hover">
+          <h3 class="text-xl font-bold mb-2" data-i18n="analytics-card-title">Analytics</h3>
+          <p class="text-gray-600 mb-4" data-i18n="analytics-card-desc">Vaccination schedules, pregnancy tracking and health trends.</p>
+          <button id="cta-analytics" class="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 rounded-xl" data-i18n="view-analytics">View Analytics</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- REGISTER -->
+    <section id="page-register" class="hidden">
+      <div class="glass-effect rounded-2xl shadow-2xl p-8 max-w-6xl mx-auto border border-gray-200">
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full mb-4">
+            <i class="fas fa-plus text-white text-2xl"></i>
+          </div>
+          <h2 class="text-3xl font-bold text-gray-800 mb-1" data-i18n="reg-title">Register New Livestock</h2>
+          <p class="text-gray-600" data-i18n="reg-subtitle">Create a comprehensive digital profile for your livestock</p>
+        </div>
+
+        <form id="registerForm" class="space-y-6">
+          <div class="grid lg:grid-cols-2 gap-6">
+            <div class="space-y-4">
+              <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
+                <h3 class="text-lg font-bold mb-3" data-i18n="basic-info">Basic Information</h3>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="relative">
+                    <label class="block text-sm font-medium mb-1" data-i18n="cow-name">Livestock Name</label>
+                    <input type="text" id="cow_name" name="cow_name" required class="w-full px-3 py-2 border rounded" placeholder="Enter name">
+                    <div class="mic-btn" data-target="cow_name" title="Speak"><i class="fas fa-microphone"></i></div>
+                  </div>
+
+                  <div class="relative">
+                    <label class="block text-sm font-medium mb-1" data-i18n="tag-number">Tag Number</label>
+                    <input type="text" id="tag_number" name="tag_number" required class="w-full px-3 py-2 border rounded" placeholder="e.g., COW001">
+                    <div class="mic-btn" data-target="tag_number" title="Speak"><i class="fas fa-microphone"></i></div>
+                  </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-3 mt-3">
+                  <div class="relative">
+                    <label class="block text-sm font-medium mb-1" data-i18n="breed">Breed</label>
+                    <input id="breed" name="breed" class="w-full px-3 py-2 border rounded" placeholder="Breed">
+                    <div class="mic-btn" data-target="breed" title="Speak"><i class="fas fa-microphone"></i></div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="birth-date">Birth Date</label>
+                    <input type="date" id="birth_date" name="birth_date" class="w-full px-3 py-2 border rounded">
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl">
+                <h3 class="text-lg font-bold mb-3" data-i18n="owner-info">Owner Information</h3>
+                <div class="space-y-3">
+                  <div class="relative">
+                    <label class="block text-sm font-medium mb-1" data-i18n="owner-name">Owner Name</label>
+                    <input id="owner_name" name="owner_name" required class="w-full px-3 py-2 border rounded" placeholder="Full name">
+                    <div class="mic-btn" data-target="owner_name" title="Speak"><i class="fas fa-microphone"></i></div>
+                  </div>
+
+                  <div class="grid md:grid-cols-2 gap-3">
+                    <div class="relative">
+                      <label class="block text-sm font-medium mb-1" data-i18n="contact-number">Contact Number</label>
+                      <input id="owner_contact" name="owner_contact" required class="w-full px-3 py-2 border rounded" placeholder="+91 9876543210">
+                      <div class="mic-btn" data-target="owner_contact" title="Speak"><i class="fas fa-microphone"></i></div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium mb-1" data-i18n="email">Email (Optional)</label>
+                      <input id="email" name="email" type="email" class="w-full px-3 py-2 border rounded" placeholder="owner@example.com">
+                    </div>
+                  </div>
+
+                  <div class="relative">
+                    <label class="block text-sm font-medium mb-1" data-i18n="farm-address">Farm Address</label>
+                    <textarea id="address" name="address" rows="2" class="w-full px-3 py-2 border rounded" placeholder="Complete farm address"></textarea>
+                    <div class="mic-btn" data-target="address" title="Speak"><i class="fas fa-microphone"></i></div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="passkey">Security Passkey</label>
+                    <input type="password" id="passkey" name="passkey" required class="w-full px-3 py-2 border rounded" placeholder="Create a secure passkey">
+                    <p class="text-xs text-gray-500 mt-1" data-i18n="passkey-note">This passkey will be required to edit the profile later</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="bg-gradient-to-r from-red-50 to-pink-50 p-4 rounded-xl">
+                <h3 class="text-lg font-bold mb-3" data-i18n="health-records">Health Records</h3>
+                <div>
+                  <label class="block text-sm font-medium mb-1" data-i18n="medical-history">Medical History</label>
+                  <textarea id="medical_history" name="medical_history" rows="4" class="w-full px-3 py-2 border rounded" placeholder="Previous diseases, treatments..."></textarea>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="vaccine-name">Vaccine Name</label>
+                    <input id="vaccine_name" name="vaccine_name" class="w-full px-3 py-2 border rounded" placeholder="e.g., FMD">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="vaccine-date">Vaccine Date</label>
+                    <input id="vaccine_date" name="vaccine_date" type="date" class="w-full px-3 py-2 border rounded">
+                  </div>
+                </div>
+
+                <div class="mt-3">
+                  <label class="block text-sm font-medium mb-1" data-i18n="next-vaccination">Next Vaccination Date</label>
+                  <input id="next_vaccination" name="next_vaccination" type="date" class="w-full px-3 py-2 border rounded">
+                </div>
+
+                <div class="mt-3">
+                  <label class="block text-sm font-medium mb-1" data-i18n="milk-production">Milk Production (liters/day)</label>
+                  <input id="milk_production" name="milk_production" type="number" step="0.1" class="w-full px-3 py-2 border rounded" placeholder="e.g., 8.5">
+                </div>
+              </div>
+
+              <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-xl">
+                <h3 class="text-lg font-bold mb-3" data-i18n="pregnancy-breeding">Pregnancy & Breeding</h3>
+                <div class="mb-3">
+                  <label class="block text-sm font-medium mb-1" data-i18n="pregnant">Pregnant?</label>
+                  <select id="pregnancy_status" name="pregnancy_status" class="w-full px-3 py-2 border rounded">
+                    <option value="not-pregnant">No</option>
+                    <option value="pregnant">Yes</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1" data-i18n="pregnancy-notes">Pregnancy Notes</label>
+                  <textarea id="pregnancy_notes" name="pregnancy_notes" rows="3" class="w-full px-3 py-2 border rounded" placeholder="Notes"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 mt-4">
+            <button type="button" id="cancelRegister" class="px-4 py-2 rounded bg-gray-200" data-i18n="cancel">Cancel</button>
+            <button type="submit" class="px-4 py-2 rounded bg-green-600 text-white" data-i18n="register-btn">Register Livestock</button>
+          </div>
+        </form>
+
+        <div id="registerResult" class="hidden mt-4 p-4 border rounded glass-effect">
+          <h4 class="font-semibold" data-i18n="registered">Registered Successfully</h4>
+          <p id="regMsg" class="text-sm text-gray-700"></p>
+          <div id="qrContainer" class="mt-3 text-center"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEARCH -->
+    <section id="page-search" class="hidden">
+      <div class="glass-effect p-6 rounded shadow max-w-4xl mx-auto">
+        <h2 class="text-2xl font-bold mb-4" data-i18n="search-title">Search Livestock Profile</h2>
+        <div class="flex gap-3 mb-4">
+          <input id="search_input" placeholder="Enter Tag Number" class="flex-1 border rounded px-3 py-2" />
+          <button id="btnSearch" class="px-4 py-2 bg-blue-600 text-white rounded" data-i18n="search-btn">Search</button>
+        </div>
+        <div id="searchOutput"></div>
+      </div>
+    </section>
+
+    <!-- MANAGE -->
+    <section id="page-manage" class="hidden">
+      <div class="glass-effect p-6 rounded shadow">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold" data-i18n="manage-title">Manage Livestock</h2>
+          <div class="flex gap-2">
+            <button id="refresh-manage" class="px-3 py-2 bg-blue-600 text-white rounded" data-i18n="refresh">Refresh</button>
+            <button id="back-manage" class="px-3 py-2 bg-gray-500 text-white rounded" data-i18n="back">Back</button>
+          </div>
+        </div>
+
+        <div class="overflow-auto">
+          <table id="manageTable" class="bg-white rounded shadow">
+            <thead class="bg-gray-100">
+              <tr>
+                <th data-i18n="th-name">Name</th>
+                <th data-i18n="th-tag">Tag</th>
+                <th data-i18n="th-breed">Breed</th>
+                <th data-i18n="th-milk">Milk (L/day)</th>
+                <th data-i18n="th-preg">Pregnant</th>
+                <th data-i18n="th-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="manageBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section id="page-analytics" class="hidden">
+      <div class="glass-effect p-6 rounded shadow">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold" data-i18n="analytics-title">Analytics</h2>
+          <div>
+            <button id="export-data" class="px-3 py-2 bg-green-600 text-white rounded" data-i18n="export">Export Data</button>
+            <button id="back-from-analytics" class="px-3 py-2 bg-gray-500 text-white rounded" data-i18n="back">Back</button>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+          <div class="metric-card" style="background: linear-gradient(135deg,#3b82f6,#1d4ed8);">
+            <p class="text-sm" data-i18n="total-livestock">Total Livestock</p>
+            <p class="text-2xl font-bold" id="total-cows">0</p>
+          </div>
+          <div class="metric-card" style="background: linear-gradient(135deg,#10b981,#059669);">
+            <p class="text-sm" data-i18n="pregnant">Pregnant</p>
+            <p class="text-2xl font-bold" id="pregnant-cows">0</p>
+          </div>
+          <div class="metric-card" style="background: linear-gradient(135deg,#f59e0b,#d97706);">
+            <p class="text-sm" data-i18n="due-vacc">Due Vaccinations</p>
+            <p class="text-2xl font-bold" id="due-vaccinations">0</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-white p-4 rounded shadow">
+            <h4 class="font-semibold mb-2">Breed Distribution</h4>
+            <canvas id="breedChart" height="220"></canvas>
+          </div>
+          <div class="bg-white p-4 rounded shadow">
+            <h4 class="font-semibold mb-2">Milk Production (L/day)</h4>
+            <canvas id="milkChart" height="220"></canvas>
+          </div>
+          <div class="bg-white p-4 rounded shadow">
+            <h4 class="font-semibold mb-2">Pregnancy Summary</h4>
+            <canvas id="pregChart" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl">
+      <h3 class="text-xl font-bold mb-3" data-i18n="edit-title">Edit Cow</h3>
+      <form id="editForm" class="space-y-3">
+        <input type="hidden" id="edit_id" />
+        <div class="grid md:grid-cols-2 gap-3">
+          <div><label class="text-sm" data-i18n="name">Name</label><input id="edit_name" class="w-full px-3 py-2 border rounded" /></div>
+          <div><label class="text-sm" data-i18n="tag">Tag</label><input id="edit_tag" class="w-full px-3 py-2 border rounded" /></div>
+          <div><label class="text-sm" data-i18n="breed">Breed</label><input id="edit_breed" class="w-full px-3 py-2 border rounded" /></div>
+          <div><label class="text-sm" data-i18n="milk">Milk L/day</label><input id="edit_milk" type="number" step="0.1" class="w-full px-3 py-2 border rounded" /></div>
+          <div>
+            <label class="text-sm" data-i18n="pregnant">Pregnancy</label>
+            <select id="edit_preg" class="w-full px-3 py-2 border rounded">
+              <option value="not-pregnant">No</option>
+              <option value="pregnant">Yes</option>
+            </select>
+          </div>
+          <div><label class="text-sm" data-i18n="contact-number">Contact</label><input id="edit_contact" class="w-full px-3 py-2 border rounded" /></div>
+          <div class="md:col-span-2"><label class="text-sm" data-i18n="medical-history">Medical History</label><textarea id="edit_med" class="w-full px-3 py-2 border rounded"></textarea></div>
+          <div class="md:col-span-2">
+            <label class="text-sm" data-i18n="enter-passkey-edit">Enter Passkey to Save</label>
+            <input id="edit_passkey" type="password" class="w-full px-3 py-2 border rounded" placeholder="Passkey to authorize edit" />
+            <p class="text-xs text-gray-500" data-i18n="passkey-hint">We compare SHA-256 hash on server to authorize edits.</p>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-4">
+          <button type="button" id="closeEdit" class="px-4 py-2 bg-gray-200 rounded" data-i18n="cancel">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded" data-i18n="save">Save</button>
         </div>
       </form>
-      <div id="registerResult" class="hidden mt-4 p-4 border rounded glass-effect">
-        <h4 class="font-semibold">Registered Successfully</h4>
-        <p id="regMsg" class="text-sm text-gray-700"></p>
-        <div id="qrContainer" class="mt-3"></div>
-      </div>
     </div>
-  </section>
-  <section id="page-search" class="hidden">
-    <div class="glass-effect p-6 rounded shadow">
-      <h2 class="text-2xl font-bold mb-4">Search Livestock Profile</h2>
-      <div class="flex gap-3 mb-4">
-        <input id="search_input" placeholder="Enter Tag Number" class="flex-1 border rounded px-3 py-2" />
-        <button id="btnSearch" class="px-4 py-2 bg-blue-600 text-white rounded">Search</button>
-      </div>
-      <div id="searchOutput"></div>
-    </div>
-  </section>
-  <section id="page-analytics" class="hidden">
-    <div class="glass-effect p-6 rounded shadow">
-      <h2 class="text-2xl font-bold mb-4">Analytics</h2>
-      <p class="text-gray-600">Charts and analytics (placeholder)</p>
-    </div>
-  </section>
-</main>
+  </div>
+
 <script>
+/* FINAL unified client script
+   - passkey hashing (SHA-256)
+   - register with hashed passkey
+   - edit with passkeyHash sent to server (server must validate)
+   - delete implementation
+   - full UI wiring + language switching (stored in localStorage)
+   - charts
+*/
+
 const API_BASE = '/api/cow';
+let cowsCache = [];
+
+/* ------------ i18n dictionary -------------- */
+const i18n = {
+  en: {
+    "title":"CowTrack","nav-subtitle":"Smart Livestock Management",
+    "nav-home":"Home","nav-register":"Register","nav-search":"Search","nav-manage":"Manage","nav-analytics":"Analytics",
+    "total-livestock":"Total Livestock","healthy":"Healthy","pregnant":"Pregnant","alerts":"Alerts",
+    "reg-card-title":"Register New Livestock","reg-card-desc":"Create comprehensive digital profiles with health records and QR codes.","register-now":"Register Now",
+    "search-card-title":"Search & Track","search-card-desc":"Find livestock profiles or scan QR codes.","search-now":"Search Profile",
+    "analytics-card-title":"Analytics","analytics-card-desc":"Vaccination schedules, pregnancy tracking and health trends.","view-analytics":"View Analytics",
+    "reg-title":"Register New Livestock","reg-subtitle":"Create a comprehensive digital profile for your livestock",
+    "basic-info":"Basic Information","cow-name":"Livestock Name","tag-number":"Tag Number","breed":"Breed","birth-date":"Birth Date",
+    "owner-info":"Owner Information","owner-name":"Owner Name","contact-number":"Contact Number","email":"Email (Optional)","farm-address":"Farm Address",
+    "passkey":"Security Passkey","passkey-note":"This passkey will be required to edit the profile later","health-records":"Health Records",
+    "medical-history":"Medical History","vaccine-name":"Vaccine Name","vaccine-date":"Vaccine Date","next-vaccination":"Next Vaccination Date",
+    "milk-production":"Milk Production (liters/day)","pregnancy-breeding":"Pregnancy & Breeding","pregnant":"Pregnant?","pregnancy-notes":"Pregnancy Notes",
+    "cancel":"Cancel","register-btn":"Register Livestock","registered":"Registered Successfully",
+    "search-title":"Search Livestock Profile","search-btn":"Search",
+    "manage-title":"Manage Livestock","refresh":"Refresh","back":"Back",
+    "th-name":"Name","th-tag":"Tag","th-breed":"Breed","th-milk":"Milk (L/day)","th-preg":"Pregnant","th-actions":"Actions",
+    "analytics-title":"Analytics","export":"Export Data","due-vacc":"Due Vaccinations",
+    "edit-title":"Edit Cow","name":"Name","tag":"Tag","milk":"Milk L/day","contact-number":"Contact","enter-passkey-edit":"Enter Passkey to Save","passkey-hint":"We compare SHA-256 hash on server to authorize edits.",
+    "save":"Save"
+  },
+  hi: {
+    "title":"CowTrack","nav-subtitle":"स्मार्ट पशुधन प्रबंधन",
+    "nav-home":"होम","nav-register":"रजिस्टर","nav-search":"खोजें","nav-manage":"मैनेज","nav-analytics":"विश्लेषण",
+    "total-livestock":"कुल पशुधन","healthy":"स्वस्थ","pregnant":"गर्भवती","alerts":"सूचनाएँ",
+    "reg-card-title":"नया पशुधन पंजीकृत करें","reg-card-desc":"स्वास्थ्य रिकॉर्ड और QR कोड के साथ प्रोफाइल बनाएं।","register-now":"रजिस्टर करें",
+    "search-card-title":"खोज और ट्रैक","search-card-desc":"ट्वीपरोफ़ाइल खोजें या QR स्कैन करें।","search-now":"प्रोफ़ाइल खोजें",
+    "analytics-card-title":"विश्लेषण","analytics-card-desc":"टीकाकरण शेड्यूल, गर्भावस्था ट्रैकिंग और स्वास्थ्य रुझान।","view-analytics":"विश्लेषण देखें",
+    "reg-title":"नया पशुधन पंजीकृत करें","reg-subtitle":"अपने पशुधन के लिए एक व्यापक डिजिटल प्रोफ़ाइल बनाएं",
+    "basic-info":"मूल जानकारी","cow-name":"पशुधन का नाम","tag-number":"टैग नंबर","breed":"जात","birth-date":"जन्म तिथि",
+    "owner-info":"मालिक जानकारी","owner-name":"मालिक का नाम","contact-number":"संपर्क नंबर","email":"ईमेल (वैकल्पिक)","farm-address":"फार्म पता",
+    "passkey":"सुरक्षा पासकी","passkey-note":"यह पासकी बाद में प्रोफ़ाइल संपादित करने के लिए आवश्यक होगी","health-records":"स्वास्थ्य रिकॉर्ड",
+    "medical-history":"चिकित्सा इतिहास","vaccine-name":"टीका नाम","vaccine-date":"टीका तिथि","next-vaccination":"अगली टीका तिथि",
+    "milk-production":"दूध उत्पादन (ली/दिन)","pregnancy-breeding":"गर्भावस्था और प्रजनन","pregnant":"गर्भवती?","pregnancy-notes":"गर्भावस्था नोट्स",
+    "cancel":"रद्द","register-btn":"पशुधन पंजीकृत करें","registered":"सफलतापूर्वक पंजीकृत",
+    "search-title":"पशुधन प्रोफ़ाइल खोजें","search-btn":"खोजें",
+    "manage-title":"पशुधन प्रबंधित करें","refresh":"ताज़ा करें","back":"वापस",
+    "th-name":"नाम","th-tag":"टैग","th-breed":"जात","th-milk":"दूध (ली/दिन)","th-preg":"गर्भवती","th-actions":"क्रियाएँ",
+    "analytics-title":"विश्लेषण","export":"डेटा एक्सपोर्ट","due-vacc":"देय टीकाकरण",
+    "edit-title":"पशु संपादित करें","name":"नाम","tag":"टैग","milk":"दूध ली/दिन","contact-number":"संपर्क","enter-passkey-edit":"सहेजने के लिए पासकी दर्ज करें","passkey-hint":"सर्वर पर SHA-256 हैश की जाँच की जाती है।",
+    "save":"सहेजें"
+  },
+  mr: {
+    "title":"CowTrack","nav-subtitle":"स्मार्ट पशुधन व्यवस्थापन",
+    "nav-home":"मुख्यपृष्ठ","nav-register":"नोंदणी","nav-search":"शोधा","nav-manage":"व्यवस्थापना","nav-analytics":"विश्लेषण",
+    "total-livestock":"एकूण पशुधन","healthy":"आरोग्य","pregnant":"गर्भवती","alerts":"सूचना",
+    "reg-card-title":"नवीन पशुधन नोंदणी","reg-card-desc":"आरोग्य नोंदी आणि QR कोडसह प्रोफाइल तयार करा.","register-now":"नोंदणी करा",
+    "search-card-title":"शोधा आणि ट्रॅक करा","search-card-desc":"टॅग नंबर द्वारे शोधा किंवा QR स्कॅन करा.","search-now":"प्रोफाइल शोधा",
+    "analytics-card-title":"विश्लेषण","analytics-card-desc":"लसीकरण वेळापत्रक, गर्भधारणा ट्रॅकिंग आणि आरोग्य कल.",
+    "reg-title":"नवीन पशुधन नोंदणी","reg-subtitle":"संपूर्ण डिजिटल प्रोफाइल तयार करा",
+    "basic-info":"मुलभूत माहिती","cow-name":"पशुधनाचे नाव","tag-number":"टॅग क्रमांक","breed":"जात","birth-date":"जन्म तारीख",
+    "owner-info":"मालक माहिती","owner-name":"मालकाचे नाव","contact-number":"संपर्क क्रमांक","email":"ईमेल (ऐच्छिक)","farm-address":"फार्म पत्ता",
+    "passkey":"सुरक्षा पासकी","passkey-note":"ही पासकी प्रोफाइल संपादनासाठी आवश्यक आहे","health-records":"आरोग्य नोंदी",
+    "medical-history":"वैद्यकीय इतिहास","vaccine-name":"लस नाव","vaccine-date":"लस तारीख","next-vaccination":"पुढील लस तारीख",
+    "milk-production":"दूध उत्पादन (ली/दिवस)","pregnancy-breeding":"गर्भधारणा व प्रजनन","pregnant":"गर्भवती?","pregnancy-notes":"गर्भधारणा टिपण्णी",
+    "cancel":"रद्द करा","register-btn":"नोंदणी","registered":"यशस्वीरित्या नोंदणी",
+    "search-title":"पशुधन प्रोफाइल शोधा","search-btn":"शोधा",
+    "manage-title":"पशुधन व्यवस्थापित करा","refresh":"रिफ्रेश","back":"मागे",
+    "th-name":"नाव","th-tag":"टॅग","th-breed":"जात","th-milk":"दूध (ली/दिवस)","th-preg":"गर्भवती","th-actions":"कृती",
+    "analytics-title":"विश्लेषण","export":"डेटा एक्सपोर्ट","due-vacc":"देय लसीकरण",
+    "edit-title":"पशू संपादित करा","name":"नाव","tag":"टॅग","milk":"दूध","contact-number":"संपर्क","enter-passkey-edit":"सुरक्षित पासकी प्रविष्ट करा","passkey-hint":"सर्वरवर SHA-256 पासवर्ड तपासा.","save":"जतन करा"
+  },
+  gu: {
+    "title":"CowTrack","nav-subtitle":"સ્માર્ટ પશુપાલન વ્યવસ્થાપન",
+    "nav-home":"હોમ","nav-register":"રજીસ્ટર","nav-search":"શોધો","nav-manage":"મેનેજ","nav-analytics":"વિશ્લેષણ",
+    "total-livestock":"કુલ પશુ","healthy":"સ્વસ્થ","pregnant":"ગર્ભવતી","alerts":"અલર્ટ",
+    "reg-card-title":"નવું પશુ રજીસ્ટર કરો","reg-card-desc":"પ્રોફાઇલ અને QR કોડ બનાવો.","register-now":"રજીસ્ટર",
+    "search-card-title":"શોધો અને ટ્રેક કરો","search-card-desc":"ટૅગ થી શોધો અથવા QR સ્કેન કરો.","search-now":"પ્રોફાઇલ શોધો",
+    "analytics-card-title":"વિશ્લેષણ","analytics-card-desc":"રોગપ્રતિરોધી સમયપત્રક, ગર્ભાવસ્થા ટ્રેકિંગ.",
+    "reg-title":"નવું পশુ રજીસ્ટર કરો","reg-subtitle":"સંપૂર્ણ ડિજિટલ પ્રોફાઇલ બનાવો",
+    "basic-info":"મૂળ માહિતી","cow-name":"પશુનું નામ","tag-number":"ટૅગ નંબર","breed":"જાત","birth-date":"જન્મ તારીખ",
+    "owner-info":"માલિકની માહિતી","owner-name":"માલિકનું નામ","contact-number":"સંપર્ક નંબર","email":"ઈમેલ (વૈકલ્પિક)","farm-address":"ખેતરની સામે",
+    "passkey":"સિક્યોર પાસકી","passkey-note":"આ પાસકી પ્રોફાઇલ સંપાદિત કરવા માટે જરૂરી છે","health-records":"હેલ્થ રેકોર્ડ્સ",
+    "medical-history":"મેડિકલ ઇતિહાસ","vaccine-name":"વીક્સિન નામ","vaccine-date":"તારીખ","next-vaccination":"આગામી વેક્સિન તારીખ",
+    "milk-production":"દૂધ (લી/દિન)","pregnancy-breeding":"ગર્ભાવસ્થા અને પ્રજનન","pregnant":"ગર્ભવતી?","pregnancy-notes":"નોટ્સ",
+    "cancel":"રદ કરો","register-btn":"રજીસ્ટર","registered":"સફળતાપૂર્વક રજીસ્ટર",
+    "search-title":"પશુની પ્રોફાઇલ શોધો","search-btn":"શોધો",
+    "manage-title":"પશુ મેનેજ કરો","refresh":"રીફ્રેશ","back":"વાપસ",
+    "th-name":"નામ","th-tag":"ટૅગ","th-breed":"જાત","th-milk":"દૂધ","th-preg":"ગર્ભવતી","th-actions":"ક્રિયાઓ",
+    "analytics-title":"વિશ્લેષણ","export":"ડેટા નિકાસ","due-vacc":"આગામી રસીકરણ",
+    "edit-title":"પશુ સંપાદિત કરો","name":"નામ","tag":"ટૅગ","milk":"દૂધ","contact-number":"સંપર્ક","enter-passkey-edit":"સેવ કરવા પાસકી પ્રવેશ કરો","passkey-hint":"સર્વર SHA-256 તુલના કરે છે.","save":"સેવ"
+  },
+  kn: {
+    "title":"CowTrack","nav-subtitle":"ಸ್ಮಾರ್ಟ್ ಪಶುಧನ ನಿರ್ವಹಣೆ",
+    "nav-home":"ಹೋಮ್","nav-register":"ನೋಂದಣಿ","nav-search":"ಹುಡುಕಿ","nav-manage":"ನಿರ್ವಹಣೆ","nav-analytics":"ವಿಶ್ಲೇಷಣೆ",
+    "total-livestock":"ಒಟ್ಟು ಪ್ರಾಣಿ","healthy":"ಆರೋಗ್ಯ","pregnant":"ಗರ್ಭಿಣಿ","alerts":"ಅಲರ್ಟ್",
+    "reg-card-title":"ಹೊಸ ಪ್ರಾಣಿ ನೋಂದಣಿ","reg-card-desc":"ಪ್ರೊಫೈಲ್ ಮತ್ತು QR ಕೇಾಡ್ ರಚಿಸಿ.","register-now":"ನೋಂದಣಿ",
+    "search-card-title":"ಹುಡುಕಿ ಮತ್ತು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ","search-card-desc":"ಟ್ಯಾಗ್ ನಿಂದ ಹುಡುಕಿ ಅಥವಾ QR ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.","search-now":"ಪ್ರೊಫೈಲ್ ಹುಡುಕಿ",
+    "analytics-card-title":"ವಿಶ್ಲೇಷಣೆ","analytics-card-desc":"ರೋಮಕಾಲಿಕೆಯ ವೇಳಾಪಟ್ಟಿ, ಗರ್ಭಾವಸ್ಥೆ ಟ್ರ್ಯಾಕಿಂಗ್.",
+    "reg-title":"ಹೊಸ ಪ್ರಾಣಿ ನೋಂದಣಿ","reg-subtitle":"ಸಂಪೂರ್ಣ ಡಿಜಿಟಲ್ ಪ್ರೊಫೈಲ್ ಸೃಷ್ಟಿಸಿ",
+    "basic-info":"ಮೂಲ ಮಾಹಿತಿ","cow-name":"ಪ್ರಾಣಿಯ ಹೆಸರು","tag-number":"ಟ್ಯಾಗ್ ಸಂಖ್ಯೆ","breed":"ಜನ್ಮ","birth-date":"ಹುಟ್ಟಿದ ದಿನಾಂಕ",
+    "owner-info":"ಮಾಲೀಕರ ಮಾಹಿತಿ","owner-name":"ಮಾಲೀಕ ಹೆಸರು","contact-number":"ಸಂಪರ್ಕ ಸಂಖ್ಯೆ","email":"ಇಮೇಲ್ (ಐಚ್ಛಿಕ)","farm-address":"ಫಾರ್ಮ್ ವಿಳಾಸ",
+    "passkey":"ಸುರಕ್ಷಿತ ಪಾಸ್‌ಕಿ","passkey-note":"ಈ ಪಾಸ್‌ಕಿ ನಂತರ ಪ್ರೊಫೈಲ್ ಅನ್ನು ಸಂಪಾದಿಸಲು ಬೇಕಾಗುತ್ತದೆ","health-records":"ಆರೋಗ್ಯ ದಾಖಲೆಗಳು",
+    "medical-history":"ವೈದ್ಯಕೀಯ ಇತಿಹಾಸ","vaccine-name":"ರೋಗನಿರೋಧಕ ಹೆಸರು","vaccine-date":"ರೋಗನಿರೋಧಕ ದಿನಾಂಕ","next-vaccination":"ಮುಂದಿನ ರೋಗನಿರೋಧಕ ದಿನಾಂಕ",
+    "milk-production":"ಹಾಲು ಉತ್ಪಾದನೆ (ಲೀ/ದಿನ)","pregnancy-breeding":"ಗರ್ಭಾವಸ್ಥೆ ಮತ್ತು ಪ್ರজনನ","pregnant":"ಗರ್ಭಿಣಿ?","pregnancy-notes":"ಗರ್ಭಾವಸ್ಥೆ ಟಿಪ್ಪಣಿಗಳು",
+    "cancel":"ರದ್ದು ಮಾಡಿ","register-btn":"ನೋಂದಣಿ","registered":"ಯಶಸ್ವಿಯಾಗಿ ನೋಂದಣಿ",
+    "search-title":"ಪ್ರಾಣಿ ಪ್ರೊಫೈಲ್ ಹುಡುಕಿ","search-btn":"ಹುಡುಕಿ",
+    "manage-title":"ಪ್ರಾಣಿ ನಿರ್ವಹಿಸಿ","refresh":"ರಿಫ್ರೆಶ್","back":"ಹಿಂದು",
+    "th-name":"ಹೆಸರು","th-tag":"ಟ್ಯಾಗ್","th-breed":"ಜನ್ಮ","th-milk":"ಹಾಲು","th-preg":"ಗರ್ಭಿಣಿ","th-actions":"ಕ್ರಿಯೆಗಳು",
+    "analytics-title":"ವಿಶ್ಲೇಷಣೆ","export":"ಡೇಟಾ ರಫ್ತು","due-vacc":"ಬಾರೋವುಗಳು",
+    "edit-title":"ಪ್ರಾಣಿ ಸಂಪಾದಿಸಿ","name":"ಹೆಸರು","tag":"ಟ್ಯಾಗ್","milk":"ಹಾಲು","contact-number":"ಸಂಪರ್ಕ","enter-passkey-edit":"ಸೇವ್ ಮಾಡಲು ಪಾಸ್‌ಕಿ ನಮೂದಿಸಿ","passkey-hint":"ಸರ್ವರ್ SHA-256 ಹಶ್ ಪರಿಶೀಲಿಸುತ್ತದೆ.","save":"ಸೇವ್"
+  }
+};
+
+/* ---------- Apply translations ---------- */
+function applyTranslations(lang){
+  const dict = i18n[lang] || i18n.en;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(key && dict[key]) el.textContent = dict[key];
+  });
+  // update placeholders if present
+  const phMap = {
+    'cow_name':'cow-name','tag_number':'tag-number','breed':'breed','owner_name':'owner-name','owner_contact':'contact-number','address':'farm-address','passkey':'passkey'
+  };
+  Object.keys(phMap).forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const key = phMap[id];
+    const dictKey = key;
+    if(i18n[lang][dictKey]) el.placeholder = i18n[lang][dictKey];
+  });
+}
+
+// initialise language
+const savedLang = localStorage.getItem('cowtrack_lang') || 'en';
+document.getElementById('langSelect').value = savedLang;
+applyTranslations(savedLang);
+document.getElementById('langSelect').addEventListener('change', (e)=>{
+  const lang = e.target.value;
+  localStorage.setItem('cowtrack_lang', lang);
+  applyTranslations(lang);
+  // re-render dynamic sections after language change
+  loadStats();
+  loadManageTable();
+  drawCharts();
+});
+
+/* ---------- notifications ---------- */
+function notify(msg, type='success'){
+  const node = document.getElementById('notification');
+  node.textContent = msg;
+  node.className = 'notification ' + (type==='error'?'notif-error':(type==='info'?'notif-info':'notif-success'));
+  node.style.display = 'block';
+  setTimeout(()=> node.style.display='none', 3500);
+}
+
+/* ---------- time ---------- */
+document.getElementById('current-time').textContent = new Date().toLocaleString();
+setInterval(()=> document.getElementById('current-time').textContent = new Date().toLocaleString(), 1000);
+
+/* ---------- navigation wiring ---------- */
 const pageHome = document.getElementById('page-home');
 const pageRegister = document.getElementById('page-register');
 const pageSearch = document.getElementById('page-search');
+const pageManage = document.getElementById('page-manage');
 const pageAnalytics = document.getElementById('page-analytics');
-document.getElementById('nav-home').addEventListener('click', ()=>show(pageHome));
-document.getElementById('nav-register').addEventListener('click', ()=>show(pageRegister));
-document.getElementById('nav-search').addEventListener('click', ()=>show(pageSearch));
-document.getElementById('nav-analytics').addEventListener('click', ()=>show(pageAnalytics));
-document.getElementById('cta-register').addEventListener('click', ()=>show(pageRegister));
-document.getElementById('cta-search').addEventListener('click', ()=>show(pageSearch));
-show(pageHome);
-loadStats();
-loadRecent();
-function show(el){ [pageHome,pageRegister,pageSearch,pageAnalytics].forEach(p=>p.classList.add('hidden')); el.classList.remove('hidden'); window.scrollTo(0,0); }
-function notify(msg,type='success'){ const n=document.getElementById('notification'); n.textContent=msg; n.className='notification '+(type==='error'?'notif-error':type==='info'?'notif-info':'notif-success'); n.style.display='block'; setTimeout(()=>n.style.display='none',3500); }
-async function loadStats(){ try{ const res=await fetch(API_BASE); const cows=await res.json(); document.getElementById('stat-total').textContent=cows.length; let recent=document.getElementById('recent-list'); recent.innerHTML=''; cows.slice(-5).reverse().forEach(c=>{ const li=document.createElement('li'); li.className='text-sm text-gray-700'; li.textContent=`${c.name||c.cowName||'Cow'} · ${c.tagNumber||''}`; recent.appendChild(li); }); }catch(err){ console.error('loadStats',err); } }
-function loadRecent(){}
-document.getElementById('registerForm').addEventListener('submit', async function(e){ e.preventDefault(); const payload={ name: document.getElementById('cow_name').value, cowName: document.getElementById('cow_name').value, tagNumber: document.getElementById('tag_number').value, breed: document.getElementById('breed').value, birthDate: document.getElementById('birth_date').value||null, ownerName: document.getElementById('owner_name').value, ownerContact: document.getElementById('owner_contact').value, medicalHistory: document.getElementById('medical_history').value, vaccinations: (document.getElementById('vaccine_name').value ? [{name:document.getElementById('vaccine_name').value, date: document.getElementById('vaccine_date').value || new Date()}] : []), nextVaccinationDate: document.getElementById('next_vaccination').value || null, pregnancyRecords: (document.getElementById('pregnancy_notes').value ? [{notes: document.getElementById('pregnancy_notes').value}] : []), passkeyHash: document.getElementById('passkey').value }; try{ const resp=await fetch(API_BASE,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const data=await resp.json(); if(resp.ok && data.success){ document.getElementById('registerResult').classList.remove('hidden'); document.getElementById('regMsg').textContent=`Cow saved with id ${data.cow._id||data.cow.id}`; const qrContainer=document.getElementById('qrContainer'); qrContainer.innerHTML=''; if(data.cow.qrCode){ const img=document.createElement('img'); img.src=data.cow.qrCode; img.alt='QR'; img.className='w-48 mx-auto border p-2 rounded'; qrContainer.appendChild(img); } else { const canvas=document.createElement('canvas'); qrContainer.appendChild(canvas); if(window.QRCode && QRCode.toCanvas){ QRCode.toCanvas(canvas, `${location.origin}/cow/${data.cow._id||data.cow.id}`, {width:180}).catch(()=>{}); } } notify('Cow registered successfully','success'); loadStats(); document.getElementById('registerForm').reset(); } else { notify(data.message||'Failed to register','error'); } }catch(err){ console.error(err); notify('Server error: could not save','error'); } });
-document.getElementById('btnSearch').addEventListener('click', async function(){ const tag=document.getElementById('search_input').value.trim(); if(!tag){ notify('Please enter tag number','error'); return; } try{ const res=await fetch(API_BASE); const cows=await res.json(); const cow=cows.find(c=> (c.tagNumber||'').toLowerCase()===tag.toLowerCase()); const out=document.getElementById('searchOutput'); if(!cow){ out.innerHTML='<div class="p-4 text-red-600">No cow found</div>'; return; } out.innerHTML=`<div class="p-4 border rounded-md"><h3 class="text-xl font-bold mb-2">${cow.name||cow.cowName}</h3><p><b>Tag:</b> ${cow.tagNumber}</p><p><b>Owner:</b> ${cow.ownerName||'-'}</p><p><b>Breed:</b> ${cow.breed||'-'}</p><p><b>Medical:</b> ${cow.medicalHistory||'-'}</p><div id="qrArea" class="mt-3"></div></div>`; const qrArea=document.getElementById('qrArea'); if(cow.qrCode){ qrArea.innerHTML=`<img src="${cow.qrCode}" class="w-40 h-40 mx-auto border p-2 rounded" />`; } else { const canvas=document.createElement('canvas'); qrArea.appendChild(canvas); if(window.QRCode && QRCode.toCanvas){ QRCode.toCanvas(canvas, `${location.origin}/cow/${cow._id||cow.id}`, {width:160}).catch(()=>{}); } } }catch(err){ console.error(err); notify('Search failed','error'); } });
-function startSpeech(elId){ if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)){ alert('Speech recognition not supported in this browser.'); return; } const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; const rec = new SpeechRecognition(); rec.lang='en-IN'; rec.interimResults=false; rec.maxAlternatives=1; rec.start(); rec.onresult = (evt) => { const txt = evt.results[0][0].transcript; const el = document.getElementById(elId); if(el) el.value = txt; }; rec.onerror = (e)=> console.warn('Speech error',e); }
-(function(){ loadStats(); })();
+
+document.getElementById('nav-home').addEventListener('click', ()=> show(pageHome));
+document.getElementById('nav-register').addEventListener('click', ()=> show(pageRegister));
+document.getElementById('nav-search').addEventListener('click', ()=> show(pageSearch));
+document.getElementById('nav-manage').addEventListener('click', ()=> { show(pageManage); loadManageTable(); });
+document.getElementById('nav-analytics').addEventListener('click', ()=> { show(pageAnalytics); drawCharts(); });
+
+document.getElementById('cta-register').addEventListener('click', ()=> show(pageRegister));
+document.getElementById('cta-search').addEventListener('click', ()=> show(pageSearch));
+document.getElementById('cta-analytics').addEventListener('click', ()=> { show(pageAnalytics); drawCharts(); });
+
+document.getElementById('back-from-analytics').addEventListener('click', ()=> show(pageHome));
+document.getElementById('back-manage').addEventListener('click', ()=> show(pageHome));
+
+function show(el){
+  [pageHome,pageRegister,pageSearch,pageManage,pageAnalytics].forEach(p=>p.classList.add('hidden'));
+  el.classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+
+/* ---------- utility helpers ---------- */
+function escapeHtml(s){ if(!s && s !== 0) return ''; return String(s).replace(/[&<>"']/g, (m)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
+
+/* ---------- fetch cows ---------- */
+async function fetchCows(){
+  try{
+    const res = await fetch(API_BASE);
+    if(!res.ok) { console.warn('fetchCows status',res.status); return []; }
+    const data = await res.json();
+    // your API might return array or { cows: [...] } - handle both
+    const arr = Array.isArray(data) ? data : (data.cows || (data.cow? [data.cow] : []));
+    cowsCache = arr;
+    return arr;
+  }catch(e){
+    console.error('fetchCows', e);
+    return [];
+  }
+}
+
+/* ---------- stats ---------- */
+async function loadStats(){
+  const cows = await fetchCows();
+  document.getElementById('dashboard-total').textContent = cows.length || 0;
+  document.getElementById('total-cows').textContent = cows.length || 0;
+
+  const healthy = cows.filter(c => (c.healthStatus||'').toLowerCase() === 'healthy').length;
+  const pregnant = cows.filter(c => (c.pregnancyStatus === 'pregnant') || (c.pregnancyRecords && c.pregnancyRecords.length)).length;
+  document.getElementById('dashboard-healthy').textContent = healthy || 0;
+  document.getElementById('dashboard-pregnant').textContent = pregnant || 0;
+  document.getElementById('pregnant-cows').textContent = pregnant || 0;
+
+  const today = new Date();
+  const due = cows.filter(c => c.nextVaccinationDate && (new Date(c.nextVaccinationDate) - today) / (1000*60*60*24) <= 30 && (new Date(c.nextVaccinationDate) - today) >= 0).length;
+  document.getElementById('due-vaccinations').textContent = due || 0;
+
+  // recent list
+  const recent = document.getElementById('recent-list');
+  recent.innerHTML = '';
+  cows.slice(-6).reverse().forEach(c=>{
+    const li = document.createElement('li');
+    li.className = 'text-sm text-gray-700';
+    li.textContent = `${c.name || c.cowName || 'Cow'} · ${c.tagNumber || ''}`;
+    recent.appendChild(li);
+  });
+}
+
+/* ---------- passkey hashing ---------- */
+async function sha256hex(message){
+  const msgUint8 = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+  return hashHex;
+}
+
+/* ---------- register form ---------- */
+document.getElementById('cancelRegister').addEventListener('click', ()=>{
+  document.getElementById('registerForm').reset();
+  show(pageHome);
+});
+
+document.getElementById('registerForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const passkey = document.getElementById('passkey').value || '';
+  const passkeyHash = passkey ? await sha256hex(passkey) : '';
+
+  const payload = {
+    name: document.getElementById('cow_name').value || '',
+    tagNumber: document.getElementById('tag_number').value || '',
+    breed: document.getElementById('breed').value || '',
+    birthDate: document.getElementById('birth_date').value || null,
+    ownerName: document.getElementById('owner_name').value || '',
+    ownerContact: document.getElementById('owner_contact').value || '',
+    medicalHistory: document.getElementById('medical_history').value || '',
+    vaccinations: (document.getElementById('vaccine_name').value ? [{ name: document.getElementById('vaccine_name').value, date: document.getElementById('vaccine_date').value || new Date() }] : []),
+    nextVaccinationDate: document.getElementById('next_vaccination').value || null,
+    pregnancyRecords: (document.getElementById('pregnancy_notes').value ? [{ notes: document.getElementById('pregnancy_notes').value }] : []),
+    pregnancyStatus: document.getElementById('pregnancy_status').value || 'not-pregnant',
+    milkProduction: parseFloat(document.getElementById('milk_production').value) || 0,
+    passkeyHash
+  };
+
+  try{
+    const res = await fetch(API_BASE, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && (data.success || data._id || data.cow)){
+      const cow = data.cow || data;
+      document.getElementById('registerResult').classList.remove('hidden');
+      const id = cow._id || cow.id || 'unknown';
+      document.getElementById('regMsg').textContent = `Cow saved with id ${id}`;
+      const qrContainer = document.getElementById('qrContainer'); qrContainer.innerHTML='';
+      if(cow.qrCode){
+        const img = document.createElement('img'); img.src = cow.qrCode; img.className='qr-preview border p-2 rounded'; qrContainer.appendChild(img);
+      } else {
+        const canvas = document.createElement('canvas'); qrContainer.appendChild(canvas);
+        const url = location.origin + '/cow/' + id;
+        QRCode.toCanvas(canvas, url, { width: 180 }).catch(()=>{});
+      }
+      notify('Cow registered successfully','success');
+      document.getElementById('registerForm').reset();
+      await loadStats();
+      show(pageHome);
+    } else {
+      notify((data.message || 'Failed to register'), 'error');
+    }
+  }catch(err){
+    console.error('register', err);
+    notify('Server error while registering', 'error');
+  }
+});
+
+/* ---------- search ---------- */
+document.getElementById('btnSearch').addEventListener('click', async ()=>{
+  const tag = (document.getElementById('search_input').value || '').trim();
+  if(!tag) { notify('Enter tag', 'error'); return; }
+  const cows = await fetchCows();
+  const cow = cows.find(c => ((c.tagNumber||'').toLowerCase() === tag.toLowerCase()) || ((c.cowName||c.name||'').toLowerCase() === tag.toLowerCase()));
+  const out = document.getElementById('searchOutput'); out.innerHTML='';
+  if(!cow) { out.innerHTML = '<div class="p-4 text-red-600">No cow found</div>'; return; }
+  const block = document.createElement('div'); block.className='p-4 border rounded-md shadow-sm bg-white';
+  block.innerHTML = `<h3 class="text-xl font-bold mb-2">${escapeHtml(cow.name||cow.cowName||'-')}</h3>
+    <p><b>Tag:</b> ${escapeHtml(cow.tagNumber||'-')}</p>
+    <p><b>Owner:</b> ${escapeHtml(cow.ownerName||'-')}</p>
+    <p><b>Breed:</b> ${escapeHtml(cow.breed||'-')}</p>
+    <p><b>Medical:</b> ${escapeHtml(cow.medicalHistory||'-')}</p>
+    <div id="qrArea" class="mt-3 text-center"></div>`;
+  out.appendChild(block);
+  const qrArea = block.querySelector('#qrArea');
+  if(cow.qrCode) qrArea.innerHTML = `<img src="${escapeHtml(cow.qrCode)}" class="w-40 h-40 mx-auto border p-2 rounded" />`;
+  else { const canvas=document.createElement('canvas'); qrArea.appendChild(canvas); const url=location.origin + '/cow/' + (cow._id||cow.id||cow.tagNumber||''); QRCode.toCanvas(canvas, url, {width:160}).catch(()=>{}); }
+});
+
+/* ---------- manage table (view/edit/delete) ---------- */
+async function loadManageTable(){
+  const tbody = document.getElementById('manageBody'); tbody.innerHTML='';
+  const cows = await fetchCows();
+  cows.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${escapeHtml(c.name||c.cowName||'-')}</td>
+      <td>${escapeHtml(c.tagNumber||'-')}</td>
+      <td>${escapeHtml(c.breed||'-')}</td>
+      <td>${(c.milkProduction!==undefined)?escapeHtml(String(c.milkProduction)):'-'}</td>
+      <td>${(c.pregnancyStatus==='pregnant')? 'Yes' : (c.pregnancyStatus==='not-pregnant'?'No': (c.pregnancyRecords && c.pregnancyRecords.length ? 'Yes' : 'No'))}</td>
+      <td class="small">
+        <button data-id="${c._id}" class="viewBtn px-2 py-1 bg-green-600 text-white rounded">View</button>
+        <button data-id="${c._id}" class="editBtn px-2 py-1 bg-yellow-500 text-white rounded">✏️ Edit</button>
+        <button data-id="${c._id}" class="delBtn px-2 py-1 bg-red-600 text-white rounded">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  // attach actions
+  document.querySelectorAll('.viewBtn').forEach(b=>b.addEventListener('click', async (e)=>{
+    const id = e.currentTarget.dataset.id;
+    window.open(location.origin + '/cow/' + id, '_blank');
+  }));
+
+  document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', async (e)=>{
+    const id = e.currentTarget.dataset.id;
+    if(!confirm('Delete this cow?')) return;
+    try{
+      const res = await fetch(API_BASE + '/' + id, { method: 'DELETE' });
+      const data = await res.json().catch(()=>({}));
+      if(res.ok) { notify('Deleted','success'); await loadManageTable(); await loadStats(); }
+      else notify((data.message||'Delete failed'),'error');
+    }catch(err){ console.error(err); notify('Delete failed','error'); }
+  }));
+
+  document.querySelectorAll('.editBtn').forEach(b=>b.addEventListener('click', async (e)=>{
+    const id = e.currentTarget.dataset.id;
+    openEditModal(id);
+  }));
+}
+
+/* ---------- open edit modal ---------- */
+function openEditModal(id){
+  const cow = cowsCache.find(c=> (c._id||c.id) === id);
+  if(!cow) return notify('Cow not found','error');
+  document.getElementById('edit_id').value = id;
+  document.getElementById('edit_name').value = cow.name || cow.cowName || '';
+  document.getElementById('edit_tag').value = cow.tagNumber || '';
+  document.getElementById('edit_breed').value = cow.breed || '';
+  document.getElementById('edit_milk').value = cow.milkProduction || '';
+  document.getElementById('edit_preg').value = cow.pregnancyStatus || 'not-pregnant';
+  document.getElementById('edit_contact').value = cow.ownerContact || cow.ownerPhone || '';
+  document.getElementById('edit_med').value = cow.medicalHistory || '';
+  document.getElementById('edit_passkey').value = '';
+  document.getElementById('editModal').classList.remove('hidden');
+}
+document.getElementById('closeEdit').addEventListener('click', ()=> document.getElementById('editModal').classList.add('hidden'));
+
+/* ---------- edit form submit (PUT with passkeyHash) ---------- */
+document.getElementById('editForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const id = document.getElementById('edit_id').value;
+  const passkey = document.getElementById('edit_passkey').value || '';
+  if(!passkey){ notify('Enter passkey to authorize edit','error'); return; }
+  const passkeyHash = await sha256hex(passkey);
+
+  const payload = {
+    name: document.getElementById('edit_name').value || '',
+    tagNumber: document.getElementById('edit_tag').value || '',
+    breed: document.getElementById('edit_breed').value || '',
+    milkProduction: parseFloat(document.getElementById('edit_milk').value) || 0,
+    pregnancyStatus: document.getElementById('edit_preg').value || 'not-pregnant',
+    ownerContact: document.getElementById('edit_contact').value || '',
+    medicalHistory: document.getElementById('edit_med').value || '',
+    passkeyHash
+  };
+
+  try{
+    const res = await fetch(API_BASE + '/' + id, { method: 'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json().catch(()=>({}));
+    if(res.ok){
+      notify('Updated','success');
+      document.getElementById('editModal').classList.add('hidden');
+      await loadManageTable();
+      await loadStats();
+    } else {
+      if(res.status === 403) notify('Invalid passkey','error');
+      else notify((data.message||'Update failed'),'error');
+    }
+  }catch(err){
+    console.error(err); notify('Update failed','error');
+  }
+});
+
+/* ---------- charts ---------- */
+let breedChart=null, milkChart=null, pregChart=null;
+async function drawCharts(){
+  const cows = await fetchCows();
+  const byBreed = {};
+  const milkLabels = [], milkValues = [];
+  let pregYes=0, pregNo=0;
+
+  cows.forEach(c=>{
+    const b = (c.breed || 'Unknown').trim();
+    byBreed[b] = (byBreed[b]||0)+1;
+    milkLabels.push(c.tagNumber || (c.cowName||c.name) || 'unknown');
+    milkValues.push(Number(c.milkProduction || 0));
+    if((c.pregnancyStatus === 'pregnant') || (c.pregnancyRecords && c.pregnancyRecords.length)) pregYes++; else pregNo++;
+  });
+
+  const breedCtx = document.getElementById('breedChart').getContext('2d');
+  if(breedChart) breedChart.destroy();
+  breedChart = new Chart(breedCtx, { type: 'pie', data: { labels: Object.keys(byBreed), datasets: [{ data: Object.values(byBreed) }] }, options: { responsive:true } });
+
+  const milkCtx = document.getElementById('milkChart').getContext('2d');
+  if(milkChart) milkChart.destroy();
+  milkChart = new Chart(milkCtx, { type: 'bar', data: { labels: milkLabels, datasets: [{ label: 'Milk L/day', data: milkValues }] }, options: { responsive:true, scales: { x: { ticks: { autoSkip: false } } } } });
+
+  const pregCtx = document.getElementById('pregChart').getContext('2d');
+  if(pregChart) pregChart.destroy();
+  pregChart = new Chart(pregCtx, { type: 'doughnut', data: { labels: ['Pregnant','Not Pregnant'], datasets: [{ data: [pregYes, pregNo] }] }, options: { responsive:true } });
+
+  document.getElementById('total-cows').textContent = cows.length || 0;
+  document.getElementById('pregnant-cows').textContent = pregYes || 0;
+}
+
+/* ---------- speech-to-text ---------- */
+function startSpeechFor(targetId){
+  if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)){
+    alert('Speech recognition not supported in this browser.');
+    return;
+  }
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SpeechRecognition();
+  rec.lang = (localStorage.getItem('cowtrack_lang') === 'hi' ? 'hi-IN' : 'en-IN');
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  rec.start();
+  rec.onresult = (evt) => {
+    const txt = evt.results[0][0].transcript;
+    const el = document.getElementById(targetId);
+    if(el) el.value = txt;
+  };
+  rec.onerror = (e)=> { console.warn('Speech error', e); };
+}
+document.querySelectorAll('.mic-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> {
+    const t = btn.getAttribute('data-target');
+    if(t) startSpeechFor(t);
+  });
+});
+
+/* ---------- export data ---------- */
+document.getElementById('export-data').addEventListener('click', async ()=>{
+  const cows = await fetchCows();
+  const csv = [
+    ['id','name','tag','breed','owner','contact','milkProduction','pregnancyStatus'].join(','),
+    ...cows.map(c => [
+      c._id || c.id || '',
+      `"${(c.name||c.cowName||'').replace(/"/g,'""')}"`,
+      c.tagNumber||'',
+      `"${(c.breed||'').replace(/"/g,'""')}"`,
+      `"${(c.ownerName||'').replace(/"/g,'""')}"`,
+      c.ownerContact||'',
+      c.milkProduction||0,
+      c.pregnancyStatus||''
+    ].join(','))
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'cowtrack_export.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+
+/* ---------- init ---------- */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  applyTranslations(localStorage.getItem('cowtrack_lang') || 'en');
+  await loadStats();
+  await drawCharts();
+  setInterval(async ()=> { await loadStats(); await drawCharts(); }, 30000);
+});
+
+/* ---------- helper to open manage on nav click ---------- */
+document.getElementById('refresh-manage').addEventListener('click', ()=> loadManageTable());
+
+/* ---------- helper escape ---------- */
+function escapeAttr(s){ return escapeHtml(s); }
+
 </script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 </body>
 </html>
